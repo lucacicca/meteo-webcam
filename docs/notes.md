@@ -9,9 +9,9 @@
 | moena (stazione Belchertown su alett.altervista.org) | Altervista buca il traffico dagli IP datacenter (TCP mai aperto) | URL remoto = proxy pubblico images.weserv.nl (`https://images.weserv.nl/?url=...`) — soluzione confermata funzionante |
 | riale (lagomaggiorexperience.it, incorporata da distrettolaghi.it) | WAF anti-bot AWS che filtra sul fingerprint (403 ai client non-browser, non referer-based) | **Referer vuoto** (il Test passa, 265 ms). Fallback previsto: images.weserv.nl come URL remoto |
 
-## Bug noti / da fixare
+## Bug noti / risolti
 
-- Il campo Referer dell'admin **concatena** il valore precompilato con l'input senza schema invece di sostituirlo (es. `https://lagomaggiorexperience.it/://www.distrettolaghi.it/`) — normalizzare l'input e sovrascrivere.
+- ~~Il campo Referer dell'admin concatena il valore precompilato con l'input senza schema~~ — **risolto in v3.27**: normalizzazione difensiva in `mwp_normalize_cam` (via prefissi `://` e `//`, schema aggiunto se manca, referer senza host valido → auto) + `autocomplete="off"` sui campi.
 
 ## Da fare
 
@@ -32,5 +32,5 @@
 
 - W3TC Lazy Load: senza Exclude Words `mwp` il lazy loader ripristina URL senza query string e annulla il cache-busting `?ts`.
 - W3TC aggiunge `auto,` all'attributo sizes (innocuo).
-- nginx di Tophost aggiunge una seconda Cache-Control max-age=31536000 sulle immagini (neutralizzata dal cache busting `?v=` della v3.29; eventuale pulizia futura con routing senza estensione).
+- nginx di Tophost aggiunge una seconda Cache-Control max-age=31536000 su tutte le immagini per MIME-type (policy globale, non removibile da PHP; il browser onora quella, non la max-age del plugin). **Neutralizzata in v3.29** con cache busting `?v={mtime}`; il routing senza estensione della **v3.28** (`/webcam/{slug}`, `/webcam/{slug}/{w}`, retrocompatibile) tiene gli URL lontani dall'handler statico per estensione.
 - Per gli hotlink non ancora convertiti: placeholder "webcam-non-disponibile" nella Media Library, con fallback `onerror` nel tag img.
