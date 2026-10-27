@@ -4,7 +4,36 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.29
+ * Version: 3.31
+ * Changelog 3.31 (cron leggero + ricerca admin):
+ *   - Il cron ora fa SOLO fetch + scrittura dell'immagine piena: niente più
+ *     conversioni WebP (full + 4 varianti = 5 conversioni per webcam) dentro
+ *     il budget di tempo. Il costo per webcam scende da ~5s a ~2s, quindi
+ *     con lo stesso budget/minuto passano ~2,5 volte più webcam. Le
+ *     varianti restano quelle che erano in cache e vengono rigenerate
+ *     pigramente alla PRIMA RICHIESTA utile (il routing le rigenera già
+ *     se più vecchie dell'originale): il costo di conversione lo paga
+ *     il primo visitatore della variante che il suo browser chiede davvero,
+ *     non più il cron per tutte le taglie. Il cron non cancella più le
+ *     varianti a ogni refresh: il confronto filemtime nel routing fa sì
+ *     che nessuno riceva mai una variante più vecchia dell'originale.
+ *   - Campo di ricerca nella pagina admin (nome, slug o attribuzione):
+ *     si combina con la paginazione — cerca "tellaro" e vedi solo le
+ *     corrispondenze con Test e shortcode nella riga.
+ * Changelog 3.30 (admin a 700 webcam):
+ *   - Paginazione dell'elenco e delle anteprime: 10/25/50/100 webcam per
+ *     pagina (menu a tendina) con frecce avanti/indietro. Con centinaia di
+ *     webcam la pagina admin resta leggera sia nel DOM sia nel POST.
+ *   - Ordinamento per data di inserimento decrescente (la più recente prima):
+ *     ogni webcam riceve un campo "added" (timestamp Unix) alla creazione
+ *     (form admin o import CSV); le webcam create prima della v3.30, senza
+ *     timestamp, restano in fondo nell'ordine alfabetico.
+ *   - Il salvataggio del form è ora "merge" per pagina: si salvano solo le
+ *     righe visibili, le webcam delle altre pagine restano intatte; la
+ *     rimozione con "×" viene registrata in un campo nascosto esplicito
+ *     (mwp_delete_slugs) e la cache della webcam eliminata viene pulita.
+ *     Questo abbassa anche il rischio di superare max_input_vars: con
+ *     100 per pagina il POST resta sotto ~1000 variabili.
  * Changelog 3.29 (cache busting obbligatorio):
  *   - Lo shortcode emette le URL con ?v={mtime del file pieno in cache}:
  *     il server aggiunge Cache-Control max-age=31536000 a tutte le
@@ -337,10 +366,10 @@ function mwp_ensure_full($cam, $allow_fetch = true) {
                 @touch($failFile);
             } else {
                 @unlink($failFile);
-                // Elimina le varianti: verranno rigenerate dalla nuova immagine
-                foreach (glob(mwp_cache_dir() . '/' . $slug . '-*.webp') as $old) {
-                    @unlink($old);
-                }
+                // v3.31: le varianti NON vengono più eliminate né rigenerate
+                // dopo il fetch (cron leggero): le rigenera la prima
+                // richiesta utile, confrontando i filemtime. Nessuno riceve
+                // mai una variante più vecchia dell'originale nuovo.
             }
         } else {
             @touch($failFile);
@@ -501,10 +530,12 @@ function mwp_cron_refresh_webcams() {
             continue;
         }
         @unlink(mwp_cache_dir() . '/' . $slug . '-fail.marker');
-        foreach (glob(mwp_cache_dir() . '/' . $slug . '-*.webp') as $old) {
-            @unlink($old);
-        }
-        mwp_warm_variants($slug);
+        // v3.31 (cron leggero): qui finiva il run per webcam con la
+        // cancellazione delle varianti + rigenerazione di full.webp e taglie
+        // (mwp_warm_variants, ~5 conversioni GD). Ora il cron scrive solo
+        // l'immagine piena: le varianti le rigenera pigramente la prima
+        // richiesta utile (il routing confronta già i filemtime). Costo per
+        // webcam nel budget: solo il fetch remoto (~2s invece di ~5s).
     }
 }
 
@@ -1149,6 +1180,8 @@ add_action('admin_post_mwp_import_csv', function () {
                                 @unlink($f);
                             }
                         }
+                        // 3.30: conserva la data di inserimento originale
+                        $cam['added'] = (int) ($old['added'] ?? 0);
                         $existing[$idx] = $cam;
                         break;
                     }
@@ -1160,6 +1193,7 @@ add_action('admin_post_mwp_import_csv', function () {
             continue; // esistente: aggiunta già gestita (o lasciata intatta)
         }
         $bySlug[$cam['slug']] = true;
+        $cam['added'] = time(); // 3.30: data di inserimento per l'ordinamento
         $added[] = $cam;
     }
     fclose($fh);
@@ -1212,48 +1246,74 @@ function mwp_handle_save() {
         exit;
     }
 
-    $raw    = $_POST['mwp_webcams'] ?? [];
-    $cams   = [];
-    $skipped = [];
+    // v3.30: il form mostra una sola pagina di webcam: il POST contiene
+    // solo le righe visibili. Il salvataggio è un "merge":
+    //   - righe elencate in mwp_page_slugs[] → aggiornate dai dati POST
+    //   - webcam eliminate con "×" (mwp_delete_slugs[]) → rimosse, cache pulita
+    //   - tutte le altre webcam (altre pagine) → restano intatte
+    // Prima della 3.30 il form postava TUTTE le webcam: con la paginazione
+    // quel modello avrebbe cancellato le pagine non visualizzate.
+    $raw         = $_POST['mwp_webcams'] ?? [];
+    $pageKeys    = array_map('sanitize_text_field', (array) ($_POST['mwp_page_slugs'] ?? []));
+    $deleteSlugs = array_map('sanitize_key', (array) ($_POST['mwp_delete_slugs'] ?? []));
+    $skipped     = [];
+    $posted      = []; // slug => cam normalizzata, solo righe della pagina
 
-    foreach ($raw as $row) {
-        $cam = mwp_normalize_cam($row, $skipped);
+    foreach ($pageKeys as $key) {
+        if (!isset($raw[$key]) || !is_array($raw[$key])) {
+            continue;
+        }
+        $cam = mwp_normalize_cam($raw[$key], $skipped);
         if ($cam !== null) {
-            $cams[] = $cam;
+            $posted[$cam['slug']] = $cam;
         }
     }
 
-    // Slug duplicati non ammessi
-    $seen = [];
-    $cams = array_values(array_filter($cams, function ($c) use (&$seen) {
-        if (isset($seen[$c['slug']])) {
-            return false;
-        }
-        $seen[$c['slug']] = true;
-        return true;
-    }));
+    $existing = mwp_get_webcams();
+    $cams     = [];
 
-    // Pulizia cache delle webcam rimosse
-    foreach (mwp_get_webcams() as $old) {
-        if (!isset($seen[$old['slug']])) {
+    foreach ($existing as $old) {
+        if (in_array($old['slug'], $deleteSlugs, true)) {
+            // Rimossa con "×": pulisci la sua cache
             foreach (glob(mwp_cache_dir() . '/' . $old['slug'] . '-*') as $f) {
                 @unlink($f);
             }
+            continue;
         }
-    }
-
-    // Se l'URL o il referer di una webcam è cambiato, azzera la sua cache:
-    // altrimenti continuerebbe a servire la vecchia immagine fino a 24h
-    foreach (mwp_get_webcams() as $old) {
-        foreach ($cams as $new) {
-            if ($old['slug'] === $new['slug']
-                && ($old['url'] !== $new['url'] || ($old['referer'] ?? '') !== $new['referer'])) {
+        if (isset($posted[$old['slug']])) {
+            $new = $posted[$old['slug']];
+            // Se l'URL o il referer di una webcam è cambiato, azzera la sua
+            // cache: altrimenti continuerebbe a servire la vecchia immagine
+            if (($old['url'] ?? '') !== $new['url']
+                || ($old['referer'] ?? '') !== $new['referer']) {
                 foreach (glob(mwp_cache_dir() . '/' . $old['slug'] . '-*') as $f) {
                     @unlink($f);
                 }
             }
+            // 3.30: conserva la data di inserimento originale
+            $new['added'] = (int) ($old['added'] ?? 0);
+            $cams[] = $new;
+            unset($posted[$old['slug']]);
+        } else {
+            // Webcam di un'altra pagina (o non modificata): intatta
+            $cams[] = $old;
         }
     }
+
+    // Nuove webcam (riga "+ Aggiungi webcam" o slug inedito): data di adesso
+    $seen = [];
+    foreach ($cams as $c) {
+        $seen[$c['slug']] = true;
+    }
+    foreach ($posted as $new) {
+        if (isset($seen[$new['slug']])) {
+            $skipped[] = $new['name'] . ' (slug duplicato: esiste già su un\'altra pagina)';
+            continue;
+        }
+        $new['added'] = time(); // 3.30: data di inserimento
+        $cams[] = $new;
+    }
+    $cams = array_values($cams);
 
     $mwp_res = update_option('mwp_webcams', $cams, false);
 
@@ -1297,13 +1357,50 @@ function mwp_admin_page() {
     }
     $statusUrl = home_url('/webcam/mwp-status?key=' . rawurlencode($statusKey));
 
-    // v3.23: le anteprime mostrano solo le ultime 10 webcam caricate;
-    // il resto resta nel DOM ma nascosto, visibile con "Mostra tutte".
-    // Le thumb sono già lazy e senza fetch remoti (3.13): così con centinaia
-    // di webcam il browser non scarica centinaia di immagini alla volta.
-    $previewLimit = max(1, (int) apply_filters('mwp_preview_limit', 10));
-    $previewTotal = count($cams);
-    $previewHidden = max(0, $previewTotal - $previewLimit);
+    // v3.30: ordinamento per data di inserimento decrescente (la webcam più
+    // recente in cima, sia nell'elenco sia nelle anteprime). Le webcam
+    // create prima della 3.30 non hanno il campo "added" e restano in
+    // fondo, in ordine alfabetico.
+    usort($cams, function ($a, $b) {
+        $aa = (int) ($a['added'] ?? 0);
+        $ab = (int) ($b['added'] ?? 0);
+        if ($aa === $ab) {
+            return strcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+        }
+        return $ab <=> $aa;
+    });
+
+    // v3.30: paginazione server-side dell'elenco e delle anteprime.
+    // Il form di salvataggio contiene solo le righe della pagina corrente:
+    // il save handler fa il "merge" con le webcam delle altre pagine.
+    $perPageAllowed = [10, 25, 50, 100];
+    $perPage = (int) ($_GET['mwp_per_page'] ?? 10);
+    if (!in_array($perPage, $perPageAllowed, true)) {
+        $perPage = 10;
+    }
+    // v3.31: ricerca admin (nome, slug o attribuzione) — si combina con la
+    // paginazione: la ricerca filtra, la paginazione scorre i risultati.
+    $search = sanitize_text_field(wp_unslash($_GET['mwp_s'] ?? ''));
+    if ($search !== '') {
+        $needle = mb_strtolower($search);
+        $cams = array_values(array_filter($cams, function ($cam) use ($needle) {
+            return strpos(mb_strtolower((string) ($cam['name'] ?? '')), $needle) !== false
+                || strpos(mb_strtolower((string) ($cam['slug'] ?? '')), $needle) !== false
+                || strpos(mb_strtolower((string) ($cam['credit'] ?? '')), $needle) !== false;
+        }));
+    }
+
+    $total    = count($cams);
+    $pages    = max(1, (int) ceil($total / $perPage));
+    $paged    = max(1, min($pages, (int) ($_GET['mwp_paged'] ?? 1)));
+    $pageCams = array_slice($cams, ($paged - 1) * $perPage, $perPage);
+    $pageUrl  = function ($p) use ($perPage, $search) {
+        $q = 'page=mwp-webcams&mwp_per_page=' . $perPage . '&mwp_paged=' . (int) $p;
+        if ($search !== '') {
+            $q .= '&mwp_s=' . rawurlencode($search);
+        }
+        return admin_url('admin.php?' . $q);
+    };
     ?>
     <div class="wrap">
         <h1>Webcam di meteo-webcam.it</h1>
@@ -1337,6 +1434,48 @@ function mwp_admin_page() {
             prova a incollare qui l'URL del sito che la mostra correttamente.
         </p>
 
+        <?php /* v3.30/v3.31: barra di ricerca + paginazione — elenco e anteprime
+              mostrano la stessa pagina (stesso filtro di ricerca), ordinate
+              dalla webcam più recente. */ ?>
+        <p style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>"
+                  style="display:inline-flex;gap:6px;align-items:center;margin:0">
+                <input type="hidden" name="page" value="mwp-webcams">
+                <input type="search" name="mwp_s" value="<?php echo esc_attr($search); ?>"
+                       placeholder="Cerca webcam (nome, slug o attribuzione)…"
+                       style="min-width:240px">
+                <?php submit_button('Cerca', 'secondary', 'submit', false); ?>
+                <label style="margin-left:10px">per pagina:
+                    <select name="mwp_per_page" onchange="this.form.submit()">
+                        <?php foreach ($perPageAllowed as $n) : ?>
+                            <option value="<?php echo (int) $n; ?>"<?php selected($n, $perPage); ?>><?php echo (int) $n; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+            </form>
+        </p>
+        <p style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px">
+            <?php if ($search !== '') : ?>
+                <span class="notice notice-info" style="margin:0;padding:4px 10px">
+                    Ricerca &laquo;<?php echo esc_html($search); ?>&raquo;: <strong><?php echo (int) $total; ?></strong> corrispondenze
+                    &nbsp;<a href="<?php echo esc_url(admin_url('admin.php?page=mwp-webcams&mwp_per_page=' . $perPage)); ?>">azzera ricerca</a>
+                </span>
+            <?php else : ?>
+                <strong><?php echo (int) $total; ?></strong> webcam totali
+            <?php endif; ?>
+            <?php if ($paged > 1) : ?>
+                <a class="button" href="<?php echo esc_url($pageUrl($paged - 1)); ?>">&larr; Precedente</a>
+            <?php else : ?>
+                <span class="button" style="opacity:.5;cursor:default">&larr; Precedente</span>
+            <?php endif; ?>
+            <span>Pagina <?php echo (int) $paged; ?> di <?php echo (int) $pages; ?></span>
+            <?php if ($paged < $pages) : ?>
+                <a class="button" href="<?php echo esc_url($pageUrl($paged + 1)); ?>">Successiva &rarr;</a>
+            <?php else : ?>
+                <span class="button" style="opacity:.5;cursor:default">Successiva &rarr;</span>
+            <?php endif; ?>
+        </p>
+
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
             <input type="hidden" name="action" value="mwp_save_webcams">
             <?php echo $nonce; ?>
@@ -1356,7 +1495,11 @@ function mwp_admin_page() {
                 </thead>
                 <tbody>
                     <tr class="mwp-row-template" style="display:none">
-                        <td><input type="text" name="mwp_webcams[__i__][slug]" placeholder="opzionale" style="width:100%"></td>
+                        <td>
+                            <!-- 3.30: marker di pagina: il save aggiorna solo le righe elencate qui -->
+                            <input type="hidden" name="mwp_page_slugs[]" value="__i__">
+                            <input type="text" name="mwp_webcams[__i__][slug]" placeholder="opzionale" style="width:100%">
+                        </td>
                         <td><input type="text" name="mwp_webcams[__i__][name]" style="width:100%"></td>
                         <td><input type="text" name="mwp_webcams[__i__][referer]" placeholder="auto / none / URL" autocomplete="off" style="width:100%"></td>
                         <td><input type="url" name="mwp_webcams[__i__][url]" style="width:100%"></td>
@@ -1365,9 +1508,13 @@ function mwp_admin_page() {
                         <td style="text-align:center;color:#a7aaad">— (dopo il salvataggio)</td>
                         <td><button type="button" class="button mwp-remove" title="Rimuovi">&times;</button></td>
                     </tr>
-                    <?php foreach ($cams as $cam) : ?>
+                    <?php foreach ($pageCams as $cam) : ?>
                         <tr>
-                            <td><input type="text" name="mwp_webcams[<?php echo esc_attr($cam['slug']); ?>][slug]" value="<?php echo esc_attr($cam['slug']); ?>" style="width:100%" readonly></td>
+                            <td>
+                                <!-- 3.30: marker di pagina (vedi mwp_handle_save) -->
+                                <input type="hidden" name="mwp_page_slugs[]" value="<?php echo esc_attr($cam['slug']); ?>">
+                                <input type="text" name="mwp_webcams[<?php echo esc_attr($cam['slug']); ?>][slug]" value="<?php echo esc_attr($cam['slug']); ?>" style="width:100%" readonly>
+                            </td>
                             <td><input type="text" name="mwp_webcams[<?php echo esc_attr($cam['slug']); ?>][name]" value="<?php echo esc_attr($cam['name']); ?>" style="width:100%"></td>
                             <td><input type="text" name="mwp_webcams[<?php echo esc_attr($cam['slug']); ?>][referer]" value="<?php echo esc_attr($cam['referer'] ?? ''); ?>" placeholder="auto / none / URL" autocomplete="off" style="width:100%"></td>
                             <td>
@@ -1451,18 +1598,14 @@ function mwp_admin_page() {
 
         <h2>Anteprime (varianti responsive, servite dal tuo dominio)</h2>
         <p class="description">
-            Mostrate le ultime <?php echo min($previewLimit, $previewTotal); ?> su <?php echo $previewTotal; ?>.
-            <?php if ($previewHidden > 0) : ?>
-                <button type="button" class="button button-small" id="mwp-show-all-previews">
-                    Mostra tutte (<?php echo $previewHidden; ?> nascoste)
-                </button>
-            <?php endif; ?>
+            Pagina <?php echo (int) $paged; ?> di <?php echo (int) $pages; ?>:
+            <?php echo count($pageCams); ?> webcam su <?php echo (int) $total; ?>,
+            nello stesso ordine dell'elenco (la più recente prima).
         </p>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,100px);gap:14px;margin-top:8px" id="mwp-previews">
-            <?php foreach ($cams as $i => $cam) : ?>
-                <?php $extra = ($previewTotal - $i) > $previewLimit; ?>
-                <figure style="margin:0;text-align:center<?php echo $extra ? ';display:none' : ''; ?>"
-                        class="mwp-preview<?php echo $extra ? ' mwp-preview-extra' : ''; ?>">
+            <?php foreach ($pageCams as $cam) : ?>
+                <figure style="margin:0;text-align:center"
+                        class="mwp-preview">
                     <a href="/webcam/<?php echo esc_attr($cam['slug']); ?>/full?ts=<?php echo esc_attr(time()); ?>"
                        target="_blank" rel="noopener" title="Apri a dimensione piena"
                        style="display:block">
@@ -1488,3 +1631,93 @@ function mwp_admin_page() {
     ]); ?>;
 
     document.addEventListener('DOMContentLoaded', function () {
+        var table = document.getElementById('mwp-table').getElementsByTagName('tbody')[0];
+        var template = document.querySelector('.mwp-row-template');
+
+        document.getElementById('mwp-add-row').addEventListener('click', function () {
+            var row = template.cloneNode(true);
+            row.style.display = '';
+            row.className = 'mwp-row-new';
+            // UNA sola chiave per tutta la riga: calcolarla una volta per campo
+            // spedirebbe alla POST una riga "spezzata" in righe da un campo solo
+            var key = 'new_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+            row.querySelectorAll('[name]').forEach(function (input) {
+                input.name = input.name.replace(/__i__/g, key);
+                // 3.30: il marker di pagina nascosto porta la chiave nel value
+                if (input.value === '__i__') {
+                    input.value = key;
+                }
+            });
+            table.appendChild(row);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('mwp-remove')) {
+                var tr = e.target.closest('tr');
+                // 3.30: registra la rimozione esplicita: il save è un merge
+                // per pagina, senza questo marker la webcam "scomparsa dal DOM"
+                // sarebbe indistinguibile da una di un'altra pagina.
+                var slugInput = tr.querySelector('input[name$="[slug]"]');
+                var slug = slugInput ? slugInput.value : '';
+                if (slug && slug.indexOf('new_') !== 0) {
+                    var h = document.createElement('input');
+                    h.type = 'hidden';
+                    h.name = 'mwp_delete_slugs[]';
+                    h.value = slug;
+                    tr.closest('form').appendChild(h);
+                }
+                tr.remove();
+            }
+        });
+
+        // Copia lo shortcode nella riga corrispondente
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.mwp-copy');
+            if (!btn) return;
+            var input = btn.closest('td').querySelector('input.mwp-shortcode');
+            input.select();
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(input.value);
+            } else {
+                document.execCommand('copy');
+            }
+            btn.textContent = '✓ Copiato';
+            setTimeout(function () { btn.textContent = 'Copia'; }, 1500);
+        });
+
+        // Test del fetch remoto di una webcam, con esito leggibile
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.mwp-test');
+            if (!btn) return;
+            var span = btn.parentElement.querySelector('.mwp-test-result');
+            span.textContent = '…test in corso…';
+            btn.disabled = true;
+            fetch(mwpAjax.url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=mwp_test_webcam&slug=' + encodeURIComponent(btn.dataset.slug)
+                    + '&nonce=' + encodeURIComponent(mwpAjax.nonce)
+            }).then(function (r) { return r.json(); }).then(function (j) {
+                btn.disabled = false;
+                var d = j && j.data ? j.data : {};
+                if (!j || !j.success) {
+                    span.textContent = '⚠ Errore interno';
+                    return;
+                }
+                if (d.ok) {
+                    span.textContent = '✓ OK: ' + d.width + '×' + d.height + ' px, '
+                        + d.bytes + ' byte, ' + d.ms + ' ms';
+                } else {
+                    span.textContent = '⚠ Fallita (' + d.ms + ' ms): '
+                        + (d.info ? JSON.stringify(d.info) : 'contenuto non valido');
+                }
+            }).catch(function () {
+                btn.disabled = false;
+                span.textContent = '⚠ Errore di rete';
+            });
+        });
+    });
+    </script>
+    <?php
+}
