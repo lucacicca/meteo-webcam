@@ -1,5 +1,14 @@
 # Changelog — Meteo Webcam Proxy
 
+## v3.31 (ottobre 2026) — cron leggero + ricerca admin
+- Il cron fa SOLO fetch + scrittura dell'immagine piena: rimosse la cancellazione delle varianti e il warm-up (full WebP + 4 taglie = 5 conversioni GD per webcam) dal run. Le varianti si rigenerano pigramente alla prima richiesta (il routing confronta già i filemtime). Costo per webcam nel budget del cron: ~2s invece di ~5s → con lo stesso budget/minuto passano ~2,5× più webcam (ciclo a 700 webcam stimato ~25 min invece di ~65).
+- Campo di ricerca nella pagina admin (nome, slug o attribuzione, param `mwp_s`), combinato con la paginazione.
+
+## v3.30 (ottobre 2026) — admin a scala 700 webcam
+- Paginazione server-side di elenco e anteprime: 10/25/50/100 per pagina (menu a tendina) con frecce avanti/indietro.
+- Ordinamento per data di inserimento decrescente: nuovo campo `added` (timestamp Unix) alla creazione (form admin o import CSV); le webcam pre-v3.30, senza timestamp, restano in fondo in ordine alfabetico.
+- Salvataggio del form riscritto a "merge per pagina": il POST contiene solo le righe visibili (marker `mwp_page_slugs[]`), eliminazione esplicita via `mwp_delete_slugs[]` (cache pulita), webcam delle altre pagine intatte. Con 100/page il POST resta sotto ~1000 variabili: `max_input_vars` non è più un limite nemmeno per la tabella admin.
+
 ## v3.29 (ottobre 2026) — cache busting
 - Lo shortcode emette le URL con `?v={mtime del file pieno}`.
 - Scoperta: Tophost aggiunge via nginx una `Cache-Control: max-age=31536000` (+expires 1 anno) a TUTTE le immagini per MIME-type (policy globale, non removibile da PHP); il browser onora quella, non la max-age=600 del plugin — webcam ferma 30+ min verificata. Con il version parameter ogni refresh del cron produce URL nuovi e la cache lunga diventa innocua.
