@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '1.0' );
+define( 'MWT_VERSION', '1.1' ); // v1.1: filtri cron plugin Meteo Webcam Proxy (batch 60, budget 50s)
 
 /* ============ Setup ============ */
 
@@ -151,16 +151,18 @@ function mwt_widgets_init() {
 }
 add_action( 'widgets_init', 'mwt_widgets_init' );
 
-/* ============ Integrazione plugin Meteo Webcam Proxy ============ */
+/* ============ Meteo Webcam Proxy — cron ============ */
 
-/*
- * Batch e budget del cron del plugin webcam: con 88 webcam e TTL 600 il
- * fabbisogno è ~9 fetch/minuto (a TTL 300 sarebbe ~18/min). Batch 24 con
- * budget 25 s copre il fabbisogno con margine senza sequestrare troppo a
- * lungo un worker PHP dell'hosting condiviso.
- */
-add_filter( 'mwp_cron_batch', function () { return 24; } );
-add_filter( 'mwp_cron_time_budget', function () { return 25; } );
+// Batch: quante webcam provare per ogni run del cron (default plugin: 8).
+add_filter( 'mwp_cron_batch', function () { return 60; } );
+
+// Budget: massimo secondi di lavoro per run, prima di lasciare il worker
+// PHP all'hosting condiviso (default plugin: 20). Chi arriva dopo lo
+// prende il run successivo.
+add_filter( 'mwp_cron_time_budget', function () { return 50; } );
+
+
+
 
 /* ============ Note per la messa in produzione ============ */
 
