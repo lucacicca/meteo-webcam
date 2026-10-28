@@ -1,4 +1,8 @@
-# Changelog — Meteo Webcam Proxy
+## v3.32 (28 ottobre 2026) — fetch parallelo nel cron
+- Il cron scarica le webcam in parallelo con `curl_multi`, in gruppi da `mwp_cron_parallel` richieste (nuovo filtro, default 6). Con ~700 webcam, molte lente (timeout 10s/25s ciascuna), il ciclo sequenziale bruciava l'intero budget del run su poche richieste appese: il costo dominante diventa il fetch più lento del gruppo, non la somma di tutti.
+- I fallback rari (certificato self-signed → secondo tentativo senza verifica; https morto in timeout → ritento in http) restano, ma in coda sequenziale a fine run e solo con tempo residuo nel budget.
+- Su hosting senza `curl_multi` degradazione automatica al ciclo sequenziale di sempre (`mwp_fetch`).
+- Con functions.php v1.4 (budget 55s, cron-job.org ogni minuto) e per-fetch medio ~2s, il ciclo completo su ~700 webcam passa da ~26-28 minuti a ~5-10 minuti.
 
 ## Tema Meteo Webcam — functions.php v1.4 (28 ottobre 2026)
 - Filtri cron alzati per il parco webcam post-import (~713): `mwp_cron_batch` 60 → 120, `mwp_cron_time_budget` 50 → 55s. Con cron esterno ogni 60s il budget resta volutamente sotto il minuto per evitare run sovrapposti sui worker PHP condivisi. Ciclo completo stimato ~26-28 min; se `fresh` resta 0 su /webcam/mwp-status il prossimo passo è il fetch parallelo (curl_multi) lato plugin.
