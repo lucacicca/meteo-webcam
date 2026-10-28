@@ -4,7 +4,18 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.32
+ * Version: 3.33
+ * Changelog 3.33 (bugfix critico fetch parallelo + log diagnosi):
+ *   - BUGFIX: nella v3.32 il cron parallelo passava a mwp_curl_multi_fetch
+ *     e ai cicli di scrittura il wrapper ['age' =>, 'cam' =>] invece della
+ *     webcam: $cam['url'] e $cam['slug'] risultavano assenti → zero richieste
+ *     in volo, ogni webcam stale riceveva solo il fail.marker e non veniva
+ *     MAI scaricata dal cron (le poche fetch osservate arrivavano dai
+ *     cold-start dei visitatori). Questo fix riporta il ciclo completo a
+ *     ~5-10 minuti come progettato in v3.32.
+ *   - LOG TEMPORANEO (rimuovere in v3.34 dopo diagnosi): ogni run scrive su
+ *     wp-content/mwp-cron-debug.log start (batch/budget/parallel), esito
+ *     SUCCESS/FAIL per webcam con motivo, conteggi finali.
  * Changelog 3.32 (fetch parallelo nel cron):
  *   - Il cron scarica le webcam in parallelo con curl_multi, in gruppi da
  *     mwp_cron_parallel richieste (default 6, filtro configurabile). Con
@@ -395,7 +406,10 @@ function mwp_curl_multi_fetch($group, $maxWait = 30) {
     if (!$mh) {
         return $results;
     }
-    foreach ($group as $cam) {
+    foreach ($group as $item) {
+        // v3.33: $item può essere la webcam oppure il wrapper ['age','cam']
+        // usato dalla coda stale del cron (bug v3.32: non unwrappato).
+        $cam = is_array($item) && isset($item['cam']) ? $item['cam'] : $item;
         $url = (string) ($cam['url'] ?? '');
         if (!filter_var($url, FILTER_VALIDATE_URL)
             || !in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)) {
@@ -436,6 +450,8 @@ function mwp_curl_multi_fetch($group, $maxWait = 30) {
             'data'      => $ok ? $data : null,
             'errno'     => $errno,
             'code'      => $code,
+            'type'      => $type,
+            'error'     => (string) curl_error($ch),
             'ssl_error' => in_array($errno, [35, 51, 58, 60, 64, 66, 77, 82, 83, 84, 90, 91, 98], true),
         ];
         curl_multi_remove_handle($mh, $ch);
@@ -646,6 +662,16 @@ function mwp_cron_refresh_webcams() {
     $useMulti = function_exists('curl_multi_init');
     $retryQueue = [];
 
+    // --- v3.33: LOG TEMPORANEO DI DIAGNOSI (rimuovere in v3.34) ---
+    $logFile = WP_CONTENT_DIR . '/mwp-cron-debug.log';
+    $logLine = function ($msg) use ($logFile) {
+        @file_put_contents($logFile, '[' . gmdate('Y-m-d H:i:s') . '] ' . $msg . "\n", FILE_APPEND);
+    };
+    $successCount = 0;
+    $failCount = 0;
+    $logLine("START cron | stale_total=" . count($stale) . " | batch=$batch | budget={$budget}s | parallel=$parallel | multi=" . ($useMulti ? 'yes' : 'no'));
+    // ---
+
     foreach (array_chunk($stale, $parallel) as $group) {
         $elapsed = microtime(true) - $start;
         if ($elapsed > $budget) {
@@ -654,25 +680,46 @@ function mwp_cron_refresh_webcams() {
 
         if ($useMulti) {
             $results = mwp_curl_multi_fetch($group, $budget - $elapsed);
-            foreach ($group as $cam) {
-                $info = $results[$cam['slug']] ?? null;
+            foreach ($group as $item) {
+                // v3.33 BUGFIX: il gruppo contiene wrapper ['age','cam'],
+                // in v3.32 si usava il wrapper come se fosse la webcam.
+                $cam = $item['cam'];
+                $slug = $cam['slug'];
+                $info = $results[$slug] ?? null;
                 $data = is_array($info) ? $info['data'] : null;
                 if ($data !== null) {
                     $store($cam, $data);
+                    $successCount++;
+                    $logLine("SUCCESS $slug");
                 } else {
                     // Fallita (o rimasta in volo quando il budget e' scaduto):
                     // backoff + coda per i fallback rari di fine run
-                    @touch(mwp_cache_dir() . '/' . $cam['slug'] . '-fail.marker');
+                    @touch(mwp_cache_dir() . '/' . $slug . '-fail.marker');
+                    $failCount++;
+                    $why = is_array($info)
+                        ? ($info['error'] !== '' ? $info['error'] : ('errno ' . $info['errno'] . ' http ' . $info['code'] . ' type ' . $info['type']))
+                        : 'no handle (url non valido?)';
+                    $logLine("FAIL $slug | $why");
                     $retryQueue[] = ['cam' => $cam, 'info' => $info];
                 }
             }
         } else {
             // Hosting senza curl_multi: ciclo sequenziale di sempre
-            foreach ($group as $cam) {
+            foreach ($group as $item) {
+                // v3.33 BUGFIX: unwrappa come nel ramo parallelo
+                $cam = $item['cam'];
                 if ((microtime(true) - $start) > $budget) {
                     break;
                 }
-                $store($cam, mwp_fetch($cam['url'], $cam['referer'] ?? ''));
+                $result = mwp_fetch($cam['url'], $cam['referer'] ?? '');
+                $store($cam, $result);
+                if ($result !== null) {
+                    $successCount++;
+                    $logLine("SUCCESS (seq) {$cam['slug']}");
+                } else {
+                    $failCount++;
+                    $logLine("FAIL (seq) {$cam['slug']}");
+                }
             }
         }
     }
@@ -697,6 +744,10 @@ function mwp_cron_refresh_webcams() {
         }
         $store($cam, mwp_fetch($cam['url'], $cam['referer'] ?? ''));
     }
+
+    // --- v3.33: LOG FINALE (temporaneo) ---
+    $logLine("END cron | success=$successCount | fail=$failCount | retries=" . count($retryQueue) . ' | elapsed=' . round(microtime(true) - $start, 1) . 's');
+    // ---
 }
 
 /* ============================================================

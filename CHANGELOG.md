@@ -1,3 +1,8 @@
+## v3.33 (28 ottobre 2026) — bugfix critico fetch parallelo + log diagnosi
+- BUGFIX v3.32: il cron parallelo passava a mwp_curl_multi_fetch e ai cicli di scrittura il wrapper ['age','cam'] invece della webcam — $cam['url']/$cam['slug'] assenti → zero richieste in volo, ogni webcam stale riceveva solo il fail.marker e non veniva MAI scaricata dal cron (le poche fetch osservate arrivavano dai cold-start dei visitatori). Il ciclo completo torna ai ~5-10 minuti progettati in v3.32.
+- LOG TEMPORANEO di diagnosi (rimuovere in v3.34): ogni run scrive su wp-content/mwp-cron-debug.log start (stale_total/batch/budget/parallel/multi), esito SUCCESS/FAIL per webcam con motivo dell'errore (curl error/errno/http code/type), conteggi finali con elapsed.
+- Nessun altro cambiamento: validazione e timeout restano quelli della v3.32.
+
 ## v3.32 (28 ottobre 2026) — fetch parallelo nel cron
 - Il cron scarica le webcam in parallelo con `curl_multi`, in gruppi da `mwp_cron_parallel` richieste (nuovo filtro, default 6). Con ~700 webcam, molte lente (timeout 10s/25s ciascuna), il ciclo sequenziale bruciava l'intero budget del run su poche richieste appese: il costo dominante diventa il fetch più lento del gruppo, non la somma di tutti.
 - I fallback rari (certificato self-signed → secondo tentativo senza verifica; https morto in timeout → ritento in http) restano, ma in coda sequenziale a fine run e solo con tempo residuo nel budget.
