@@ -295,8 +295,8 @@ function mwp_curl_opts($ua, $referer, $insecure) {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_MAXREDIRS      => 3,
-        CURLOPT_TIMEOUT        => 25,
-        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_CONNECTTIMEOUT => 15,
         CURLOPT_USERAGENT      => $ua,
         CURLOPT_SSL_VERIFYPEER => !$insecure,
         CURLOPT_SSL_VERIFYHOST => $insecure ? 0 : 2,
@@ -395,7 +395,8 @@ function mwp_curl_multi_fetch($group, $maxWait = 30) {
     if (!$mh) {
         return $results;
     }
-    foreach ($group as $cam) {
+    foreach ($group as $item) {
+        $cam = is_array($item) && isset($item['cam']) ? $item['cam'] : $item;
         $url = (string) ($cam['url'] ?? '');
         if (!filter_var($url, FILTER_VALIDATE_URL)
             || !in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)) {
@@ -428,15 +429,24 @@ function mwp_curl_multi_fetch($group, $maxWait = 30) {
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $type = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         $errno = curl_errno($ch);
-        $typeOk = str_starts_with($type, 'image/')
-            || $type === 'application/octet-stream'
-            || $type === '';
-        $ok = $data !== false && $code >= 200 && $code < 300 && $typeOk && strlen((string) $data) > 500;
+        $error = curl_error($ch);
+        
+        $isImage = false;
+        if ($data !== false && strlen($data) > 500) {
+            $isImageType = str_starts_with($type, 'image/');
+            if ($isImageType) {
+                $imageInfo = @getimagesizefromstring($data);
+                $isImage = $imageInfo !== false;
+            }
+        }
+        $ok = $isImage && $code >= 200 && $code < 300;
         $results[$slug] = [
             'data'      => $ok ? $data : null,
             'errno'     => $errno,
             'code'      => $code,
+            'error'     => $error,
             'ssl_error' => in_array($errno, [35, 51, 58, 60, 64, 66, 77, 82, 83, 84, 90, 91, 98], true),
+            'type'      => $type,
         ];
         curl_multi_remove_handle($mh, $ch);
         curl_close($ch);
@@ -654,21 +664,22 @@ function mwp_cron_refresh_webcams() {
 
         if ($useMulti) {
             $results = mwp_curl_multi_fetch($group, $budget - $elapsed);
-            foreach ($group as $cam) {
-                $info = $results[$cam['slug']] ?? null;
+            foreach ($group as $item) {
+                $cam = $item['cam'];
+                $slug = $cam['slug'];
+                $info = $results[$slug] ?? null;
                 $data = is_array($info) ? $info['data'] : null;
                 if ($data !== null) {
                     $store($cam, $data);
                 } else {
-                    // Fallita (o rimasta in volo quando il budget e' scaduto):
-                    // backoff + coda per i fallback rari di fine run
-                    @touch(mwp_cache_dir() . '/' . $cam['slug'] . '-fail.marker');
+                    @touch(mwp_cache_dir() . '/' . $slug . '-fail.marker');
                     $retryQueue[] = ['cam' => $cam, 'info' => $info];
                 }
             }
         } else {
-            // Hosting senza curl_multi: ciclo sequenziale di sempre
-            foreach ($group as $cam) {
+            foreach ($group as $item) {
+                $cam = $item['cam'];
+                $slug = $cam['slug'];
                 if ((microtime(true) - $start) > $budget) {
                     break;
                 }
