@@ -4,7 +4,14 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.34
+ * Version: 3.35
+ * Changelog 3.35 (rimozione log diagnosi):
+ *   - Rimosso il log temporaneo su mwp-cron-debug.log introdotto in
+ *     v3.33: la diagnosi e' chiusa (bug wrapper fixato in v3.33, coda
+ *     sana col backoff progressivo della v3.34: fino a 120 fetch
+ *     riuscite per run in ~30s, cicli completi sul parco webcam, run
+ *     vuoti quando tutto e' fresco).
+ *   - Nessun altro cambiamento funzionale.
  * Changelog 3.34 (backoff progressivo):
  *   - Un fetch fallito non va ritentato ogni minuto per sempre: le webcam
  *     morte (404/403/timeout) restavano per sempre le piu' vecchie in coda
@@ -709,16 +716,6 @@ function mwp_cron_refresh_webcams() {
     $useMulti = function_exists('curl_multi_init');
     $retryQueue = [];
 
-    // --- v3.33: LOG TEMPORANEO DI DIAGNOSI (rimuovere in v3.34) ---
-    $logFile = WP_CONTENT_DIR . '/mwp-cron-debug.log';
-    $logLine = function ($msg) use ($logFile) {
-        @file_put_contents($logFile, '[' . gmdate('Y-m-d H:i:s') . '] ' . $msg . "\n", FILE_APPEND);
-    };
-    $successCount = 0;
-    $failCount = 0;
-    $logLine("START cron | stale_total=" . count($stale) . " | batch=$batch | budget={$budget}s | parallel=$parallel | multi=" . ($useMulti ? 'yes' : 'no'));
-    // ---
-
     foreach (array_chunk($stale, $parallel) as $group) {
         $elapsed = microtime(true) - $start;
         if ($elapsed > $budget) {
@@ -736,17 +733,10 @@ function mwp_cron_refresh_webcams() {
                 $data = is_array($info) ? $info['data'] : null;
                 if ($data !== null) {
                     $store($cam, $data);
-                    $successCount++;
-                    $logLine("SUCCESS $slug");
                 } else {
                     // Fallita (o rimasta in volo quando il budget e' scaduto):
                     // backoff + coda per i fallback rari di fine run
                     mwp_mark_fail($slug);
-                    $failCount++;
-                    $why = is_array($info)
-                        ? ($info['error'] !== '' ? $info['error'] : ('errno ' . $info['errno'] . ' http ' . $info['code'] . ' type ' . $info['type']))
-                        : 'no handle (url non valido?)';
-                    $logLine("FAIL $slug | $why");
                     $retryQueue[] = ['cam' => $cam, 'info' => $info];
                 }
             }
@@ -758,15 +748,7 @@ function mwp_cron_refresh_webcams() {
                 if ((microtime(true) - $start) > $budget) {
                     break;
                 }
-                $result = mwp_fetch($cam['url'], $cam['referer'] ?? '');
-                $store($cam, $result);
-                if ($result !== null) {
-                    $successCount++;
-                    $logLine("SUCCESS (seq) {$cam['slug']}");
-                } else {
-                    $failCount++;
-                    $logLine("FAIL (seq) {$cam['slug']}");
-                }
+                $store($cam, mwp_fetch($cam['url'], $cam['referer'] ?? ''));
             }
         }
     }
@@ -791,10 +773,6 @@ function mwp_cron_refresh_webcams() {
         }
         $store($cam, mwp_fetch($cam['url'], $cam['referer'] ?? ''));
     }
-
-    // --- v3.33: LOG FINALE (temporaneo) ---
-    $logLine("END cron | success=$successCount | fail=$failCount | retries=" . count($retryQueue) . ' | elapsed=' . round(microtime(true) - $start, 1) . 's');
-    // ---
 }
 
 /* ============================================================

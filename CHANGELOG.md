@@ -1,3 +1,7 @@
+## v3.35 (28 ottobre 2026) — rimozione log diagnosi
+- Rimosso il log temporaneo su wp-content/mwp-cron-debug.log (introdotto in v3.33): la diagnosi del cron è chiusa con esito positivo — bug wrapper v3.32 fixato (v3.33), backoff progressivo attivo (v3.34). Verifica del 28/10 ore 16:27-17:03: run fino a 120 fetch riuscite in ~30s, cicli completi sul parco webcam, run vuoti (0 fetch, 0s) quando tutto è fresco; ~1.575 fetch riuscite in ~35 minuti contro le ~1,5-2/minuto pre-fix.
+- Nessun altro cambiamento funzionale. Il file mwp-cron-debug.log esistente può essere cancellato dall'hosting.
+
 ## v3.34 (28 ottobre 2026) — backoff progressivo dei fetch falliti
 - Il log v3.33 ha mostrato che ~95 webcam morte (404/403/500/503/connessioni) restavano per sempre in testa alla coda stale e bruciavano l'intero budget dei run (4 run su 5 con 0 successi, 42-78 fail l'uno).
 - Ora ogni fallimento consecutivo raddoppia l'attesa prima del retry: 60s, 2m, 4m, 8m, ... fino a 24h (tetto min(86400, base * 2^(count-1)), base = mwp_backoff_seconds). Il marker -fail.marker contiene il conteggio dei fallimenti consecutivi (retrocompatibile: marker vuoto pre-3.34 = 1). Al primo successo marker cancellato, contatore azzerato.
