@@ -4,7 +4,17 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.33
+ * Version: 3.34
+ * Changelog 3.34 (backoff progressivo):
+ *   - Un fetch fallito non va ritentato ogni minuto per sempre: le webcam
+ *     morte (404/403/timeout) restavano per sempre le piu' vecchie in coda
+ *     e si mangiavano l'intero budget di ogni run (log v3.33: 4 run su 5
+ *     con 0 successi e 42-78 fail). Ora ogni fallimento consecutivo
+ *     raddoppia l'attesa: 60s, 2m, 4m, 8m ... fino a 24h; il primo successo
+ *     azzera il contatore. Il marker -fail.marker ora contiene il numero
+ *     di fallimenti consecutivi (retrocompatibile: marker vuoto = 1).
+ *   - Il log di diagnosi v3.33 resta attivo: rimuoverlo in v3.35 dopo la
+ *     verifica che la coda gira pulita.
  * Changelog 3.33 (bugfix critico fetch parallelo + log diagnosi):
  *   - BUGFIX: nella v3.32 il cron parallelo passava a mwp_curl_multi_fetch
  *     e ai cicli di scrittura il wrapper ['age' =>, 'cam' =>] invece della
@@ -225,6 +235,45 @@ function mwp_fullwebp_path($slug) {
 
 function mwp_variant_path($slug, $w) {
     return mwp_cache_dir() . '/' . $slug . '-' . (int) $w . '.webp';
+}
+
+/* v3.34: backoff progressivo dei fetch falliti. Prima: attesa fissa di
+ * mwp_backoff_seconds (60s) → una webcam morta veniva ritentata a ogni run
+ * per sempre, restando in testa alla coda stale (le piu' vecchie prima) e
+ * bruciando il budget delle sane. Ora il marker contiene il conteggio dei
+ * fallimenti consecutivi e l'attesa raddoppia fino a 24h; al primo successo
+ * il marker viene cancellato e si riparte da zero. */
+function mwp_fail_marker_path($slug) {
+    return mwp_cache_dir() . '/' . $slug . '-fail.marker';
+}
+
+function mwp_fail_backoff($slug) {
+    $f = mwp_fail_marker_path($slug);
+    if (!is_file($f)) {
+        return 0;
+    }
+    $count = max(1, (int) @file_get_contents($f)); // marker vuoto (pre-3.34) = 1 fallimento
+    $base = max(5, (int) apply_filters('mwp_backoff_seconds', 60));
+    return (int) min(86400, $base * (2 ** (min($count, 9) - 1)));
+}
+
+function mwp_in_backoff($slug) {
+    $f = mwp_fail_marker_path($slug);
+    return is_file($f) && (time() - (int) filemtime($f)) < mwp_fail_backoff($slug);
+}
+
+function mwp_mark_fail($slug) {
+    $f = mwp_fail_marker_path($slug);
+    $count = is_file($f) ? max(0, (int) @file_get_contents($f)) : 0;
+    if ($count <= 0) {
+        $count = 0; // marker pre-3.34 senza numero: parti da 1
+    }
+    @file_put_contents($f, (string) min($count + 1, 20));
+    @touch($f);
+}
+
+function mwp_clear_fail($slug) {
+    @unlink(mwp_fail_marker_path($slug));
 }
 
 /**
@@ -476,9 +525,8 @@ function mwp_ensure_full($cam, $allow_fetch = true) {
     // Backoff: se un fetch è appena fallito, non ritentare per 60 secondi.
     // Senza, una webcam offline genera una richiesta remota per ogni visitatore
     // (o peggio, centinaia da un loop di immagini rotte).
-    $failFile   = mwp_cache_dir() . '/' . $slug . '-fail.marker';
-    $backoffSec = (int) apply_filters('mwp_backoff_seconds', 60);
-    $recentFail = is_file($failFile) && (time() - filemtime($failFile)) < $backoffSec;
+    // v3.34: backoff progressivo (v. helper sopra)
+    $recentFail = mwp_in_backoff($slug);
 
     $fresh = is_file($full) && (time() - filemtime($full)) < $ttl;
 
@@ -490,16 +538,16 @@ function mwp_ensure_full($cam, $allow_fetch = true) {
             // con una pagina HTML o un messaggio di errore al posto dell'immagine
             if (!@getimagesize($full)) {
                 @unlink($full);
-                @touch($failFile);
+                mwp_mark_fail($slug);
             } else {
-                @unlink($failFile);
+                mwp_clear_fail($slug);
                 // v3.31: le varianti NON vengono più eliminate né rigenerate
                 // dopo il fetch (cron leggero): le rigenera la prima
                 // richiesta utile, confrontando i filemtime. Nessuno riceve
                 // mai una variante più vecchia dell'originale nuovo.
             }
         } else {
-            @touch($failFile);
+            mwp_mark_fail($slug);
         }
     }
 
@@ -619,9 +667,8 @@ function mwp_cron_refresh_webcams() {
         $full = mwp_full_path($slug);
         $ttl  = max(30, (int) ($cam['ttl'] ?? 300));
 
-        $failFile   = mwp_cache_dir() . '/' . $slug . '-fail.marker';
-        $backoffSec = (int) apply_filters('mwp_backoff_seconds', 60);
-        $recentFail = is_file($failFile) && (time() - filemtime($failFile)) < $backoffSec;
+        // v3.34: backoff progressivo (v. helper sopra)
+        $recentFail = mwp_in_backoff($slug);
         $fresh      = is_file($full) && (time() - filemtime($full)) < $ttl;
 
         if ($fresh || $recentFail) {
@@ -641,7 +688,7 @@ function mwp_cron_refresh_webcams() {
         $slug = $cam['slug'];
         $full = mwp_full_path($slug);
         if ($data === null) {
-            @touch(mwp_cache_dir() . '/' . $slug . '-fail.marker');
+            mwp_mark_fail($slug);
             return false;
         }
         @file_put_contents($full, $data);
@@ -649,10 +696,10 @@ function mwp_cron_refresh_webcams() {
             // 200 con contenuto non-immagine: scarta e marca il backoff,
             // in richiesta continuerà a essere servito lo stale precedente
             @unlink($full);
-            @touch(mwp_cache_dir() . '/' . $slug . '-fail.marker');
+            mwp_mark_fail($slug);
             return false;
         }
-        @unlink(mwp_cache_dir() . '/' . $slug . '-fail.marker');
+        mwp_clear_fail($slug);
         // v3.31 (cron leggero): il cron scrive solo l'immagine piena; le
         // varianti le rigenera pigramente la prima richiesta utile.
         return true;
@@ -694,7 +741,7 @@ function mwp_cron_refresh_webcams() {
                 } else {
                     // Fallita (o rimasta in volo quando il budget e' scaduto):
                     // backoff + coda per i fallback rari di fine run
-                    @touch(mwp_cache_dir() . '/' . $slug . '-fail.marker');
+                    mwp_mark_fail($slug);
                     $failCount++;
                     $why = is_array($info)
                         ? ($info['error'] !== '' ? $info['error'] : ('errno ' . $info['errno'] . ' http ' . $info['code'] . ' type ' . $info['type']))
@@ -803,8 +850,7 @@ add_action('init', function () {
         } else {
             $stale++;
         }
-        $failFile = mwp_cache_dir() . '/' . $slug . '-fail.marker';
-        if (is_file($failFile) && ($now - (int) filemtime($failFile)) < 60) {
+        if (mwp_in_backoff($slug)) {
             $backoff++;
         }
     }

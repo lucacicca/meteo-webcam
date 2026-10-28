@@ -1,3 +1,9 @@
+## v3.34 (28 ottobre 2026) — backoff progressivo dei fetch falliti
+- Il log v3.33 ha mostrato che ~95 webcam morte (404/403/500/503/connessioni) restavano per sempre in testa alla coda stale e bruciavano l'intero budget dei run (4 run su 5 con 0 successi, 42-78 fail l'uno).
+- Ora ogni fallimento consecutivo raddoppia l'attesa prima del retry: 60s, 2m, 4m, 8m, ... fino a 24h (tetto min(86400, base * 2^(count-1)), base = mwp_backoff_seconds). Il marker -fail.marker contiene il conteggio dei fallimenti consecutivi (retrocompatibile: marker vuoto pre-3.34 = 1). Al primo successo marker cancellato, contatore azzerato.
+- Helper: mwp_fail_marker_path/mwp_fail_backoff/mwp_in_backoff/mwp_mark_fail/mwp_clear_fail; cron, cold-start (mwp_ensure_full) e status endpoint usano tutti la stessa logica.
+- Il log di diagnosi resta attivo, si rimuove in v3.35 dopo verifica.
+
 ## v3.33 (28 ottobre 2026) — bugfix critico fetch parallelo + log diagnosi
 - BUGFIX v3.32: il cron parallelo passava a mwp_curl_multi_fetch e ai cicli di scrittura il wrapper ['age','cam'] invece della webcam — $cam['url']/$cam['slug'] assenti → zero richieste in volo, ogni webcam stale riceveva solo il fail.marker e non veniva MAI scaricata dal cron (le poche fetch osservate arrivavano dai cold-start dei visitatori). Il ciclo completo torna ai ~5-10 minuti progettati in v3.32.
 - LOG TEMPORANEO di diagnosi (rimuovere in v3.34): ogni run scrive su wp-content/mwp-cron-debug.log start (stale_total/batch/budget/parallel/multi), esito SUCCESS/FAIL per webcam con motivo dell'errore (curl error/errno/http code/type), conteggi finali con elapsed.
