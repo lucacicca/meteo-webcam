@@ -1,5 +1,8 @@
 # Changelog — Meteo Webcam Proxy
 
+## Tema Meteo Webcam — functions.php v1.4 (28 ottobre 2026)
+- Filtri cron alzati per il parco webcam post-import (~713): `mwp_cron_batch` 60 → 120, `mwp_cron_time_budget` 50 → 55s. Con cron esterno ogni 60s il budget resta volutamente sotto il minuto per evitare run sovrapposti sui worker PHP condivisi. Ciclo completo stimato ~26-28 min; se `fresh` resta 0 su /webcam/mwp-status il prossimo passo è il fetch parallelo (curl_multi) lato plugin.
+
 ## v3.31 (ottobre 2026) — cron leggero + ricerca admin
 - Il cron fa SOLO fetch + scrittura dell'immagine piena: rimosse la cancellazione delle varianti e il warm-up (full WebP + 4 taglie = 5 conversioni GD per webcam) dal run. Le varianti si rigenerano pigramente alla prima richiesta (il routing confronta già i filemtime). Costo per webcam nel budget del cron: ~2s invece di ~5s → con lo stesso budget/minuto passano ~2,5× più webcam (ciclo a 700 webcam stimato ~25 min invece di ~65).
 - Campo di ricerca nella pagina admin (nome, slug o attribuzione, param `mwp_s`), combinato con la paginazione.
