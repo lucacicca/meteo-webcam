@@ -597,6 +597,14 @@ function mwp_cron_refresh_webcams() {
     // sequenziale sprecava il budget del run in attese una per volta.
     $parallel = max(1, (int) apply_filters('mwp_cron_parallel', 6));
 
+    // --- LOG TEMPORANEO (RIMUOVERE DOPO DIAGNOSI) ---
+    $logFile = WP_CONTENT_DIR . '/mwp-cron-debug.log';
+    $log = "[" . date('Y-m-d H:i:s') . "] Start cron | batch=$batch | budget={$budget}s | parallel=$parallel\n";
+    file_put_contents($logFile, $log, FILE_APPEND);
+    $successCount = 0;
+    $failCount = 0;
+    // ---
+
     $stale = [];
     foreach (mwp_get_webcams() as $cam) {
         $slug = $cam['slug'];
@@ -659,11 +667,16 @@ function mwp_cron_refresh_webcams() {
                 $data = is_array($info) ? $info['data'] : null;
                 if ($data !== null) {
                     $store($cam, $data);
+                    $successCount++;
+                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] SUCCESS: " . $cam['slug'] . "\n", FILE_APPEND);
                 } else {
                     // Fallita (o rimasta in volo quando il budget e' scaduto):
                     // backoff + coda per i fallback rari di fine run
                     @touch(mwp_cache_dir() . '/' . $cam['slug'] . '-fail.marker');
                     $retryQueue[] = ['cam' => $cam, 'info' => $info];
+                    $failCount++;
+                    $errorMsg = is_array($info) ? ($info['error'] ?? (curl_strerror($info['errno'] ?? 0) ?: 'Unknown')) : 'Unknown';
+                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] FAIL: " . $cam['slug'] . " | Error: " . $errorMsg . "\n", FILE_APPEND);
                 }
             }
         } else {
@@ -672,10 +685,24 @@ function mwp_cron_refresh_webcams() {
                 if ((microtime(true) - $start) > $budget) {
                     break;
                 }
-                $store($cam, mwp_fetch($cam['url'], $cam['referer'] ?? ''));
+                $result = mwp_fetch($cam['url'], $cam['referer'] ?? '');
+                $store($cam, $result);
+                if ($result !== null) {
+                    $successCount++;
+                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] SUCCESS (seq): " . $cam['slug'] . "\n", FILE_APPEND);
+                } else {
+                    $failCount++;
+                    $errorMsg = ($GLOBALS['mwp_last_fetch']['err'] ?? 'Unknown');
+                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] FAIL (seq): " . $cam['slug'] . " | Error: " . $errorMsg . "\n", FILE_APPEND);
+                }
             }
         }
     }
+
+    // --- LOG FINALE ---
+    $log = "[" . date('Y-m-d H:i:s') . "] End cron | Success=$successCount | Fail=$failCount | Total=" . ($successCount + $failCount) . "\n\n";
+    file_put_contents($logFile, $log, FILE_APPEND);
+    // ---
 
     // Fallback rari a fine run, solo con tempo residuo nel budget: certificato
     // self-signed (secondo tentativo senza verifica) e https morto in timeout
