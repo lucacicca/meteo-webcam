@@ -4,7 +4,23 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.31
+ * Version: 3.32
+ * Changelog 3.32 (fetch parallelo nel cron):
+ *   - Il cron scarica le webcam in parallelo con curl_multi, in gruppi da
+ *     mwp_cron_parallel richieste (default 6, filtro configurabile). Con
+ *     centinaia di webcam, molte lente (timeout 10s/25s ciascuna), il ciclo
+ *     sequenziale bruciava l'intero budget del run su poche richieste appese:
+ *     il costo dominante del run diventa il fetch piu' lento del gruppo, non
+ *     la somma di tutti i fetch.
+ *   - I fallback rari (certificato self-signed → secondo tentativo senza
+ *     verifica; https morto in timeout → ritento in http) restano, ma in coda
+ *     sequenziale a fine run e solo se resta tempo nel budget: nel parallelo
+ *     riprovarli subito costava piu' del fetch stesso.
+ *   - Su hosting senza curl_multi il cron torna automaticamente al fetch
+ *     sequenziale di sempre (mwp_fetch), stesso comportamento della 3.31.
+ *   - Con il tema functions.php v1.4 (budget 55s, cron-job.org ogni minuto)
+ *     e per-fetch medio ~2s, il ciclo completo su ~700 webcam passa da
+ *     ~26-28 minuti a ~5-10 minuti.
  * Changelog 3.31 (cron leggero + ricerca admin):
  *   - Il cron ora fa SOLO fetch + scrittura dell'immagine piena: niente più
  *     conversioni WebP (full + 4 varianti = 5 conversioni per webcam) dentro
@@ -269,8 +285,12 @@ function mwp_fetch($url, $refererMode = '') {
  * Esegue una singola richiesta cURL.
  * $insecure = true disattiva la verifica del certificato (per i self-signed).
  */
-function mwp_curl_get($url, $ua, $referer, $insecure) {
-    $ch = curl_init($url);
+/**
+ * Opzioni cURL browser-like condivise dal fetch singolo (mwp_curl_get) e
+ * da quello parallelo del cron (mwp_curl_multi_fetch, v3.32).
+ * $insecure = true disattiva la verifica del certificato (self-signed).
+ */
+function mwp_curl_opts($ua, $referer, $insecure) {
     $opts = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
@@ -304,7 +324,16 @@ function mwp_curl_get($url, $ua, $referer, $insecure) {
     if ($referer !== '') {
         $opts[CURLOPT_REFERER] = $referer;
     }
-    curl_setopt_array($ch, $opts);
+    return $opts;
+}
+
+/**
+ * Esegue una singola richiesta cURL.
+ * $insecure = true disattiva la verifica del certificato (per i self-signed).
+ */
+function mwp_curl_get($url, $ua, $referer, $insecure) {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, mwp_curl_opts($ua, $referer, $insecure));
     $data  = curl_exec($ch);
     $code  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $type  = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
@@ -332,6 +361,88 @@ function mwp_curl_get($url, $ua, $referer, $insecure) {
         'data'      => $data,
         'ssl_error' => in_array($errno, [35, 51, 58, 60, 64, 66, 77, 82, 83, 84, 90, 91, 98], true),
     ];
+}
+
+/**
+ * Referer risolto per una webcam: stessa logica di mwp_fetch(), fattorizzata
+ * per riusarla nel fetch parallelo del cron (v3.32).
+ */
+function mwp_referer_for($cam) {
+    $host = parse_url($cam['url'], PHP_URL_HOST);
+    $mode = (string) ($cam['referer'] ?? '');
+    if ($mode === 'none') {
+        return '';
+    }
+    if ($mode === '' || $mode === 'host') {
+        return 'https://' . $host . '/';
+    }
+    return $mode;
+}
+
+/**
+ * Fetch PARALLELO di un gruppo di webcam (v3.32, curl_multi).
+ * $group  = array di webcam; $maxWait = secondi di attesa massima per il
+ * gruppo (il residuo del budget del run, gestito dal chiamante).
+ * Ritorna [slug => ['data' => string|null, 'errno' => int, 'code' => int,
+ * 'ssl_error' => bool]]. Le webcam senza risultato (URL non valido) sono
+ * assenti: il chiamante le tratta come fetch fallito.
+ */
+function mwp_curl_multi_fetch($group, $maxWait = 30) {
+    $results = [];
+    $map = [];
+    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
+    $mh = curl_multi_init();
+    if (!$mh) {
+        return $results;
+    }
+    foreach ($group as $cam) {
+        $url = (string) ($cam['url'] ?? '');
+        if (!filter_var($url, FILTER_VALIDATE_URL)
+            || !in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)) {
+            continue;
+        }
+        $ch = curl_init($url);
+        if (!$ch) {
+            continue;
+        }
+        curl_setopt_array($ch, mwp_curl_opts($ua, mwp_referer_for($cam), false));
+        curl_multi_add_handle($mh, $ch);
+        $map[] = ['ch' => $ch, 'slug' => $cam['slug']];
+    }
+
+    if ($map) {
+        $deadline = microtime(true) + max(1, (float) $maxWait);
+        do {
+            $status = curl_multi_exec($mh, $active);
+            if ($active && $status === CURLM_OK) {
+                // Breve attesa invece di loop stretto: il worker respira
+                curl_multi_select($mh, 0.2);
+            }
+        } while ($active && $status === CURLM_OK && microtime(true) < $deadline);
+    }
+
+    foreach ($map as $m) {
+        $ch = $m['ch'];
+        $slug = $m['slug'];
+        $data = curl_multi_getcontent($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $type = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        $errno = curl_errno($ch);
+        $typeOk = str_starts_with($type, 'image/')
+            || $type === 'application/octet-stream'
+            || $type === '';
+        $ok = $data !== false && $code >= 200 && $code < 300 && $typeOk && strlen((string) $data) > 500;
+        $results[$slug] = [
+            'data'      => $ok ? $data : null,
+            'errno'     => $errno,
+            'code'      => $code,
+            'ssl_error' => in_array($errno, [35, 51, 58, 60, 64, 66, 77, 82, 83, 84, 90, 91, 98], true),
+        ];
+        curl_multi_remove_handle($mh, $ch);
+        curl_close($ch);
+    }
+    curl_multi_close($mh);
+    return $results;
 }
 
 /**
@@ -476,12 +587,15 @@ add_action('mwp_cron_refresh', 'mwp_cron_refresh_webcams');
 
 function mwp_cron_refresh_webcams() {
     // Su hosting condiviso (es. Tophost) un run non deve occupare un worker
-    // PHP per minuti: limitiamo il numero di fetch per esecuzione...
+    // PHP per minuti: limitiamo il numero di webcam per esecuzione...
     $batch = max(1, (int) apply_filters('mwp_cron_batch', 8));
-    // ...e da 3.23 anche il tempo complessivo del run: con webcam lente
-    // (timeout 10-25s ciascuna) il batch da solo non basta a garantire
-    // che il worker venga rilasciato presto.
+    // ...il tempo complessivo del run...
     $budget = max(5, (int) apply_filters('mwp_cron_time_budget', 20));
+    // ...e da 3.32 scarichiamo le webcam in PARALLELO (curl_multi): gruppi
+    // di mwp_cron_parallel richieste in volo insieme (default 6). Con
+    // centinaia di webcam, molte lente (timeout 10s/25s ciascuna), il ciclo
+    // sequenziale sprecava il budget del run in attese una per volta.
+    $parallel = max(1, (int) apply_filters('mwp_cron_parallel', 6));
 
     $stale = [];
     foreach (mwp_get_webcams() as $cam) {
@@ -506,36 +620,82 @@ function mwp_cron_refresh_webcams() {
     });
     $stale = array_slice($stale, 0, $batch);
 
-    $start = microtime(true);
-    foreach ($stale as $entry) {
-        if ((microtime(true) - $start) > $budget) {
-            break; // tempo scaduto: il resto al run successivo
-        }
-        $cam  = $entry['cam'];
+    // Scrittura in cache + marker di backoff: unica funzione per tutti i percorsi
+    $store = function ($cam, $data) {
         $slug = $cam['slug'];
         $full = mwp_full_path($slug);
-
-        $data = mwp_fetch($cam['url'], $cam['referer'] ?? '');
         if ($data === null) {
             @touch(mwp_cache_dir() . '/' . $slug . '-fail.marker');
-            continue;
+            return false;
         }
-
         @file_put_contents($full, $data);
         if (!@getimagesize($full)) {
             // 200 con contenuto non-immagine: scarta e marca il backoff,
             // in richiesta continuerà a essere servito lo stale precedente
             @unlink($full);
             @touch(mwp_cache_dir() . '/' . $slug . '-fail.marker');
-            continue;
+            return false;
         }
         @unlink(mwp_cache_dir() . '/' . $slug . '-fail.marker');
-        // v3.31 (cron leggero): qui finiva il run per webcam con la
-        // cancellazione delle varianti + rigenerazione di full.webp e taglie
-        // (mwp_warm_variants, ~5 conversioni GD). Ora il cron scrive solo
-        // l'immagine piena: le varianti le rigenera pigramente la prima
-        // richiesta utile (il routing confronta già i filemtime). Costo per
-        // webcam nel budget: solo il fetch remoto (~2s invece di ~5s).
+        // v3.31 (cron leggero): il cron scrive solo l'immagine piena; le
+        // varianti le rigenera pigramente la prima richiesta utile.
+        return true;
+    };
+
+    $start = microtime(true);
+    $useMulti = function_exists('curl_multi_init');
+    $retryQueue = [];
+
+    foreach (array_chunk($stale, $parallel) as $group) {
+        $elapsed = microtime(true) - $start;
+        if ($elapsed > $budget) {
+            break; // tempo scaduto: il resto al run successivo
+        }
+
+        if ($useMulti) {
+            $results = mwp_curl_multi_fetch($group, $budget - $elapsed);
+            foreach ($group as $cam) {
+                $info = $results[$cam['slug']] ?? null;
+                $data = is_array($info) ? $info['data'] : null;
+                if ($data !== null) {
+                    $store($cam, $data);
+                } else {
+                    // Fallita (o rimasta in volo quando il budget e' scaduto):
+                    // backoff + coda per i fallback rari di fine run
+                    @touch(mwp_cache_dir() . '/' . $cam['slug'] . '-fail.marker');
+                    $retryQueue[] = ['cam' => $cam, 'info' => $info];
+                }
+            }
+        } else {
+            // Hosting senza curl_multi: ciclo sequenziale di sempre
+            foreach ($group as $cam) {
+                if ((microtime(true) - $start) > $budget) {
+                    break;
+                }
+                $store($cam, mwp_fetch($cam['url'], $cam['referer'] ?? ''));
+            }
+        }
+    }
+
+    // Fallback rari a fine run, solo con tempo residuo nel budget: certificato
+    // self-signed (secondo tentativo senza verifica) e https morto in timeout
+    // (ritento in http). mwp_fetch li gestisce gia' internamente (3.19/3.17).
+    foreach ($retryQueue as $item) {
+        if ((microtime(true) - $start) > $budget) {
+            break;
+        }
+        $info = $item['info'];
+        if (!is_array($info)) {
+            continue; // URL non valido: nessun ritento puo' salvarla
+        }
+        $cam = $item['cam'];
+        $errno = (int) ($info['errno'] ?? 0);
+        $worth = !empty($info['ssl_error'])
+            || ($errno === 28 && strpos($cam['url'], 'https://') === 0);
+        if (!$worth) {
+            continue;
+        }
+        $store($cam, mwp_fetch($cam['url'], $cam['referer'] ?? ''));
     }
 }
 
