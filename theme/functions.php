@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '1.1' ); // v1.1: filtri cron plugin Meteo Webcam Proxy (batch 60, budget 50s)
+define( 'MWT_VERSION', '1.4' ); // v1.4: filtri cron alzati per ~713 webcam (batch 120, budget 55s)
 
 /* ============ Setup ============ */
 
@@ -151,18 +151,21 @@ function mwt_widgets_init() {
 }
 add_action( 'widgets_init', 'mwt_widgets_init' );
 
-/* ============ Meteo Webcam Proxy — cron ============ */
+/* ============ Meteo Webcam Proxy — cron (scala ~713 webcam) ============ */
 
-// Batch: quante webcam provare per ogni run del cron (default plugin: 8).
-add_filter( 'mwp_cron_batch', function () { return 60; } );
+// Con 713 webcam a TTL 600 servirebbero ~71 fetch/minuto. Il cron esterno
+// (cron-job.org) spara wp-cron.php ogni 60s: il budget deve restare ben
+// sotto quel minuto per non sovrapporre i run sui worker PHP condivisi.
 
-// Budget: massimo secondi di lavoro per run, prima di lasciare il worker
-// PHP all'hosting condiviso (default plugin: 20). Chi arriva dopo lo
-// prende il run successivo.
-add_filter( 'mwp_cron_time_budget', function () { return 50; } );
+// Batch: tetto massimo di webcam provate per run (default plugin: 8).
+// Non è il vincolo reale (lo è il budget), ma non deve troncare la coda.
+add_filter( 'mwp_cron_batch', function () { return 120; } );
 
-
-
+// Budget: massimo secondi di lavoro per run (default plugin: 20).
+// 55s: con ~2s/webcam della v3.31 ≈ 25-27 fetch per run → ~25-27/min,
+// ciclo completo su 713 webcam in ~26-28 minuti. NON salire oltre ~55s
+// con cron ogni minuto: i run si accavallerebbero (Tophost, worker limitati).
+add_filter( 'mwp_cron_time_budget', function () { return 55; } );
 
 /* ============ Note per la messa in produzione ============ */
 
@@ -172,4 +175,9 @@ add_filter( 'mwp_cron_time_budget', function () { return 50; } );
  * 2) Attivare il tema, poi Site Kit > AdSense non richiede modifiche:
  *    gli annunci automatici si agganciano da soli a wp_head/wp_footer.
  * 3) Lasciare le modifiche solo via bump versione qui e in style.css.
+ * 4) v1.4: dopo il deploy tenere d'occhio /webcam/mwp-status per qualche ora.
+ *    Attesa in regime: fresh stabile >0 (equilibrio ~30-40% del parco), le
+ *    "missing" colmate nel primo giro completo (~30 min). Se fresh resta 0
+ *    il collo di bottiglia è altrove (per-fetch >4s): prossima mossa =
+ *    fetch parallelo (curl_multi) lato plugin, v3.32.
  */
