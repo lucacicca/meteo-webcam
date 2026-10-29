@@ -4,7 +4,28 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.36
+ * Version: 3.37
+ * Changelog 3.37 (il truncamento da budget non e' piu' un fallimento):
+ *   - Sintomo (29/10): webcam sane (macinaie-3, campotosto) diventavano
+ *     oldest_slug e non venivano MAI ricaricate dal cron, pur riuscendo
+ *     al pulsante Test in <100ms. Meccanismo: le ~94 webcam morte senza
+ *     cache hanno age=PHP_INT_MAX e siedono per sempre in testa alla coda
+ *     stale; quando il loro backoff scade (assieme, ogni ~4,3h: il cap
+ *     dei 24h era irraggiungibile, v. sotto) bruciano l'intero budget del
+ *     run (10-25s per gruppo di 6), e TUTTO cio' che sta dietro il fronte
+ *     - a partire dalla webcam sana piu' vecchia - viene raccolto come
+ *     errno 0 + http 0 (richiesta mai completata) e marcato come FAIL:
+ *     il suo backoff si sincronizza con quello delle webcam morte e la
+ *     webcam resta affamata per sempre. Il ruolo di vittima passa alla
+ *     successiva piu' vecchia appena la vittima viene eliminata.
+ *   - Fix: errno 0 + http 0 (richiesta troncata dal budget del gruppo)
+ *     NON e' un fallimento della webcam: niente marker di backoff, la
+ *     webcam resta in coda e il run successivo la serve con budget pieno.
+ *     Il fail con backoff resta solo per errori veri (errno > 0 o
+ *     http >= 400).
+ *   - Backoff portato davvero a 24h: count fino a 12 (60s * 2^11,
+ *     cap 86400): le webcam morte escono dal backoff una volta al giorno,
+ *     il "temporale" di fetch morti all'inizio della coda diventa raro.
  * Changelog 3.36 (retry sequenziale per i fetch paralleli mai completati):
  *   - Nel cron parallelo un fetch che non ha mai completato la richiesta
  *     (errno 0 + http 0: handle ancora in volo quando scade il budget del
@@ -272,7 +293,10 @@ function mwp_fail_backoff($slug) {
     }
     $count = max(1, (int) @file_get_contents($f)); // marker vuoto (pre-3.34) = 1 fallimento
     $base = max(5, (int) apply_filters('mwp_backoff_seconds', 60));
-    return (int) min(86400, $base * (2 ** (min($count, 9) - 1)));
+    // v3.37: count fino a 12, cosi' il tetto di 86400s (24h) e' raggiungibile
+    // (con min($count, 9) il massimo reale era 60*2^8 = ~4,3h e le webcam
+    // morte rientravano in testa alla coda ogni ~4 ore).
+    return (int) min(86400, $base * (2 ** (min($count, 12) - 1)));
 }
 
 function mwp_in_backoff($slug) {
@@ -745,9 +769,21 @@ function mwp_cron_refresh_webcams() {
                 if ($data !== null) {
                     $store($cam, $data);
                 } else {
-                    // Fallita (o rimasta in volo quando il budget e' scaduto):
-                    // backoff + coda per i fallback rari di fine run
-                    mwp_mark_fail($slug);
+                    // v3.37: errno 0 + http 0 = la richiesta non ha MAI
+                    // completato (handle ancora in volo quando il budget
+                    // del gruppo e' scaduto, tipicamente perche' le webcam
+                    // in testa alla coda hanno bruciato il run). NON e' un
+                    // fallimento della webcam: niente marker di backoff,
+                    // resta in coda e il run successivo la serve con budget
+                    // pieno. Questo rompe il ciclo per cui la webcam sana
+                    // piu' vecchia (oldest_slug) restava affamata per
+                    // sempre col backoff sincronizzato con le webcam morte.
+                    $truncated = is_array($info)
+                        && (int) ($info['errno'] ?? 0) === 0
+                        && (int) ($info['code'] ?? 0) === 0;
+                    if (!$truncated) {
+                        mwp_mark_fail($slug);
+                    }
                     $retryQueue[] = ['cam' => $cam, 'info' => $info];
                 }
             }

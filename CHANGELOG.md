@@ -100,3 +100,14 @@
 
 Nel cron parallelo, un fetch che non ha mai completato la richiesta (errno 0 + http 0: handle ancora in volo quando scade il budget del gruppo, o stall di curl_multi su quel server) veniva marcato come fallito e mandato in backoff progressivo senza alcun retry. Era il caso delle webcam che risultano OK al pulsante Test (mwp_fetch sequenziale) ma falliscono sempre nel cron: es. macinaie-monte-amiata-3 (Test OK 1920×1080, 224 KB, 84 ms; cron FAIL http 0 a ogni run, oldest 42h). Ora questi casi entrano nella coda di retry sequenziale di fine run (stesso percorso del Test): se il retry riesce, il fail marker viene cancellato e il backoff si azzera.
 
+
+## v3.37 (29 ottobre 2026) — il truncamento da budget non è più un fallimento
+
+**Sintomo**: webcam sane (macinaie-monte-amiata-3, poi campotosto) diventavano oldest_slug e non venivano MAI ricaricate dal cron, pur riuscendo al pulsante Test in <100 ms. Elimina+ricrea apparentemente "guariva", ma il ruolo di vittima passava alla webcam sana successiva per età.
+
+**Meccanismo**: le webcam morte senza cache hanno age = PHP_INT_MAX e siedono per sempre in testa alla coda stale. Quando il loro backoff scade (tutte insieme, ogni ~4,3 ore: il cap di 24h era irraggiungibile perché il raddoppio si fermava a count 9) bruciano l'intero budget del run (10-25s per gruppo di 6 parallelo), e tutto ciò che sta dietro il fronte — a partire dalla webcam sana più vecchia — viene raccolto come errno 0 + http 0 (richiesta mai completata) e marcato come FAIL. Il suo backoff si sincronizza con quello delle webcam morte e la webcam resta affamata per sempre.
+
+**Fix**:
+- errno 0 + http 0 = richiesta troncata dal budget del gruppo, NON un fallimento della webcam: niente marker di backoff, la webcam resta in coda e il run successivo la serve con budget pieno. Gli errori veri (errno > 0 o http >= 400) mantengono backoff e retry.
+- Backoff realmente fino a 24h (count fino a 12): le webcam morte rientrano in coda una volta al giorno invece che ogni ~4 ore.
+
