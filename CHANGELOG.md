@@ -95,3 +95,8 @@
 ## Note trasversali
 - Bug del salvataggio risolto in v3.13–v3.16: aggiungere webcam oltre la 40ª falliva — il campo credito della webcam "ostuni" conteneva ~32 MB di backslash raddoppiati a ogni salvataggio → POST da 50 MB → opzione serializzata oltre il max_allowed_packet di MySQL → update_option rifiutata in silenzio.
 - Revisione CWV della v3.21: i problemi erano fetch remoto sincrono in richiesta, varianti rigenerate dal primo visitatore dopo ogni refresh, `<img>` senza dimensioni (CLS), refresh JS inefficace con srcset, placeholder assente nel frontend.
+
+## v3.36 (29 ottobre 2026) — retry sequenziale per i fetch paralleli mai completati
+
+Nel cron parallelo, un fetch che non ha mai completato la richiesta (errno 0 + http 0: handle ancora in volo quando scade il budget del gruppo, o stall di curl_multi su quel server) veniva marcato come fallito e mandato in backoff progressivo senza alcun retry. Era il caso delle webcam che risultano OK al pulsante Test (mwp_fetch sequenziale) ma falliscono sempre nel cron: es. macinaie-monte-amiata-3 (Test OK 1920×1080, 224 KB, 84 ms; cron FAIL http 0 a ogni run, oldest 42h). Ora questi casi entrano nella coda di retry sequenziale di fine run (stesso percorso del Test): se il retry riesce, il fail marker viene cancellato e il backoff si azzera.
+

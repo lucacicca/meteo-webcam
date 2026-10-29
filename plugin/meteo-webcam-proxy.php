@@ -4,7 +4,18 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.35
+ * Version: 3.36
+ * Changelog 3.36 (retry sequenziale per i fetch paralleli mai completati):
+ *   - Nel cron parallelo un fetch che non ha mai completato la richiesta
+ *     (errno 0 + http 0: handle ancora in volo quando scade il budget del
+ *     gruppo, o stall di curl_multi su quel server) veniva marcato come
+ *     fallito e condannato al backoff progressivo SENZA retry: era il caso
+ *     delle webcam OK al pulsante Test (mwp_fetch sequenziale) ma sempre
+ *     http 0 nel cron (es. macinaie-monte-amiata-3: Test OK 1920x1080 in
+ *     84 ms, cron FAIL http 0 a ogni run, oldest 42h). Ora questi casi
+ *     entrano nella coda di retry sequenziale di fine run, stesso
+ *     percorso del Test: se il retry riesce, il fail marker viene
+ *     cancellato e il backoff si azzera.
  * Changelog 3.35 (rimozione log diagnosi):
  *   - Rimosso il log temporaneo su mwp-cron-debug.log introdotto in
  *     v3.33: la diagnosi e' chiusa (bug wrapper fixato in v3.33, coda
@@ -766,8 +777,15 @@ function mwp_cron_refresh_webcams() {
         }
         $cam = $item['cam'];
         $errno = (int) ($info['errno'] ?? 0);
+        $code = (int) ($info['code'] ?? 0);
+        // v3.36: errno 0 + http 0 = la richiesta parallela non ha mai
+        // completato (truncamento da budget o stall di curl_multi): non
+        // condannare la webcam al backoff senza prima riprovare in
+        // sequenziale, che e' il percorso con cui il pulsante Test
+        // riesce (mwp_fetch) sulle stesse URL.
         $worth = !empty($info['ssl_error'])
-            || ($errno === 28 && strpos($cam['url'], 'https://') === 0);
+            || ($errno === 28 && strpos($cam['url'], 'https://') === 0)
+            || ($errno === 0 && $code === 0);
         if (!$worth) {
             continue;
         }
