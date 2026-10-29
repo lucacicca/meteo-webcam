@@ -1,3 +1,10 @@
+## v3.38 (29 ottobre 2026) — retry HTTP/1.1 forzato dopo errori di framing HTTP/2
+
+errno 92 ("Stream error in the HTTP/2 framing layer") o 16: la libcurl dell'hosting negozia HTTP/2 con certi server (es. su Google Cloud) e lo stream muore a metà. Caso reale: il Test su https://includi.insidesrl.eu/dueporti/dueporti.jpg falliva in 470 ms con errno 92 (server 35.214.219.154, GCP), DNS e connessione OK.
+
+- mwp_fetch ora riprova automaticamente forzando HTTP/1.1 dopo questi errori (con eventuale secondo tentativo insecure se serve il certificato).
+- Il cron manda in coda di retry sequenziale di fine run anche i fetch paralleli falliti con errno 16/92: il retry sequenziale forza HTTP/1.1 e il server risponde.
+
 ## v3.37 (29 ottobre 2026) — il truncamento da budget non è più un fallimento
 
 **Sintomo**: webcam sane (macinaie-monte-amiata-3, poi campotosto) diventavano oldest_slug e non venivano MAI ricaricate dal cron, pur riuscendo al pulsante Test in <100 ms. Elimina+ricrea apparentemente "guariva", ma il ruolo di vittima passava alla webcam sana successiva per età.

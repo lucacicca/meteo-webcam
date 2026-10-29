@@ -4,7 +4,16 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.37
+ * Version: 3.38
+ * Changelog 3.38 (retry HTTP/1.1 forzato dopo errori di framing HTTP/2):
+ *   - errno 92 ("Stream error in the HTTP/2 framing layer", curl) o 16:
+ *     la libcurl dell'hosting negozia HTTP/2 con certi server (es. su
+ *     Google Cloud) e lo stream muore a meta'. Ora mwp_fetch riprova
+ *     automaticamente forzando HTTP/1.1 (con eventuale secondo tentativo
+ *     insecure se serve), e il cron manda in coda di retry sequenziale
+ *     i fetch paralleli falliti per questi errori. Caso reale (29/10):
+ *     includi.insidesrl.eu/dueporti/dueporti.jpg -> Test fallito in 470ms
+ *     con errno 92, server 35.214.219.154 (GCP).
  * Changelog 3.37 (il truncamento da budget non e' piu' un fallimento):
  *   - Sintomo (29/10): webcam sane (macinaie-3, campotosto) diventavano
  *     oldest_slug e non venivano MAI ricaricate dal cron, pur riuscendo
@@ -353,6 +362,24 @@ function mwp_fetch($url, $refererMode = '') {
             }
         }
 
+        // v3.38: errori di framing HTTP/2 (curl 92 "Stream error in the
+        // HTTP/2 framing layer", 16 "HTTP/2 stream error"): la libcurl
+        // dell'hosting negozia h2 con certi server e lo stream muore.
+        // Riprova forzando HTTP/1.1, che quei server servono senza problemi.
+        $last = $GLOBALS['mwp_last_fetch'] ?? [];
+        if (in_array((int) ($last['errno'] ?? 0), [16, 92], true)) {
+            $res = mwp_curl_get($url, $ua, $referer, false, true);
+            if ($res['ok']) {
+                return $res['data'];
+            }
+            if ($res['ssl_error']) {
+                $res = mwp_curl_get($url, $ua, $referer, true, true);
+                if ($res['ok']) {
+                    return $res['data'];
+                }
+            }
+        }
+
         // 3° tentativo (3.19): se HTTPS muore in timeout (connessione mai
         // aperta, es. porta 443 bucherata dall'hosting remoto), riprova
         // in HTTP sulla porta 80
@@ -392,7 +419,7 @@ function mwp_fetch($url, $refererMode = '') {
  * da quello parallelo del cron (mwp_curl_multi_fetch, v3.32).
  * $insecure = true disattiva la verifica del certificato (self-signed).
  */
-function mwp_curl_opts($ua, $referer, $insecure) {
+function mwp_curl_opts($ua, $referer, $insecure, $forceHttp1 = false) {
     $opts = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
@@ -413,9 +440,14 @@ function mwp_curl_opts($ua, $referer, $insecure) {
             'Sec-Fetch-Site: cross-site',
         ],
     ];
-    // HTTP/2 solo se libcurl lo supporta (altrimenti la richiesta fallirebbe)
+    // v3.38: $forceHttp1 = retry dopo errori di framing HTTP/2 (curl 92/16):
+    // certi server negoziano h2 e poi rompono lo stream. Altrimenti HTTP/2
+    // solo se libcurl lo supporta (come da 3.17).
     $ver = function_exists('curl_version') ? curl_version() : [];
-    if (defined('CURL_HTTP_VERSION_2TLS') && !empty($ver['features']) && ($ver['features'] & CURL_VERSION_HTTP2)) {
+    $h2ok = defined('CURL_HTTP_VERSION_2TLS') && !empty($ver['features']) && ($ver['features'] & CURL_VERSION_HTTP2);
+    if ($forceHttp1 && defined('CURL_HTTP_VERSION_1_1')) {
+        $opts[CURLOPT_HTTP_VERSION] = CURL_HTTP_VERSION_1_1;
+    } elseif ($h2ok) {
         $opts[CURLOPT_HTTP_VERSION] = CURL_HTTP_VERSION_2TLS;
     }
     // Preferisci IPv4: su molti shared hosting la risoluzione IPv6 di certi
@@ -433,9 +465,9 @@ function mwp_curl_opts($ua, $referer, $insecure) {
  * Esegue una singola richiesta cURL.
  * $insecure = true disattiva la verifica del certificato (per i self-signed).
  */
-function mwp_curl_get($url, $ua, $referer, $insecure) {
+function mwp_curl_get($url, $ua, $referer, $insecure, $forceHttp1 = false) {
     $ch = curl_init($url);
-    curl_setopt_array($ch, mwp_curl_opts($ua, $referer, $insecure));
+    curl_setopt_array($ch, mwp_curl_opts($ua, $referer, $insecure, $forceHttp1));
     $data  = curl_exec($ch);
     $code  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $type  = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
@@ -819,8 +851,11 @@ function mwp_cron_refresh_webcams() {
         // condannare la webcam al backoff senza prima riprovare in
         // sequenziale, che e' il percorso con cui il pulsante Test
         // riesce (mwp_fetch) sulle stesse URL.
+        // v3.38: anche gli errori di framing HTTP/2 (16/92): il retry
+        // sequenziale in mwp_fetch forza HTTP/1.1 e quei server rispondono
         $worth = !empty($info['ssl_error'])
             || ($errno === 28 && strpos($cam['url'], 'https://') === 0)
+            || in_array($errno, [16, 92], true)
             || ($errno === 0 && $code === 0);
         if (!$worth) {
             continue;
