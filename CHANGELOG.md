@@ -1,3 +1,8 @@
+## v3.39 (30 ottobre 2026) — autenticazione HTTP Basic/Digest per URL con credenziali
+
+- Gli URL con credenziali (`http://utente:password@host/...`, tipico delle webcam Hikvision via ISAPI, es. `/ISAPI/Streaming/channels/102/picture`) fallivano con 401 pur funzionando da browser: curl con le credenziali dentro l'URL tenta SOLO il Basic auth, mentre questi server richiedono il Digest.
+- Fix: le credenziali vengono estratte dall'URL (nuova helper `mwp_split_auth`) e passate con `CURLOPT_USERPWD` + `CURLAUTH_ANY`, così libcurl negozia Basic o Digest automaticamente. Applicato sia al fetch singolo (`mwp_fetch` / pulsante Test) sia al fetch parallelo del cron (`mwp_curl_multi_fetch`).
+
 ## v3.38 (29 ottobre 2026) — retry HTTP/1.1 forzato dopo errori di framing HTTP/2
 
 errno 92 ("Stream error in the HTTP/2 framing layer") o 16: la libcurl dell'hosting negozia HTTP/2 con certi server (es. su Google Cloud) e lo stream muore a metà. Caso reale: il Test su https://includi.insidesrl.eu/dueporti/dueporti.jpg falliva in 470 ms con errno 92 (server 35.214.219.154, GCP), DNS e connessione OK.
