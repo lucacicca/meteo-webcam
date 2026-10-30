@@ -4,7 +4,17 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.38
+ * Version: 3.39
+ * Changelog 3.39 (autenticazione HTTP Basic/Digest per URL con credenziali):
+ *   - Gli URL con credenziali (http://utente:password@host/..., tipico delle
+ *     webcam Hikvision via ISAPI, es. /ISAPI/Streaming/channels/102/picture)
+ *     fallivano con 401 pur funzionando da browser: curl con le credenziali
+ *     dentro l'URL tenta SOLO il Basic auth, mentre questi server richiedono
+ *     il Digest (il browser gestisce il challenge e infatti funziona).
+ *   - Fix: le credenziali vengono estratte dall'URL (mwp_split_auth) e passate
+ *     con CURLOPT_USERPWD + CURLAUTH_ANY, cosi' libcurl negozia Basic o
+ *     Digest automaticamente. Applicato sia al fetch singolo (mwp_fetch /
+ *     pulsante Test) sia al fetch parallelo del cron (mwp_curl_multi_fetch).
  * Changelog 3.38 (retry HTTP/1.1 forzato dopo errori di framing HTTP/2):
  *   - errno 92 ("Stream error in the HTTP/2 framing layer", curl) o 16:
  *     la libcurl dell'hosting negozia HTTP/2 con certi server (es. su
@@ -419,7 +429,28 @@ function mwp_fetch($url, $refererMode = '') {
  * da quello parallelo del cron (mwp_curl_multi_fetch, v3.32).
  * $insecure = true disattiva la verifica del certificato (self-signed).
  */
-function mwp_curl_opts($ua, $referer, $insecure, $forceHttp1 = false) {
+/**
+ * v3.39: estrae le credenziali HTTP da un URL (utente:password@host).
+ * Ritorna [URL senza credenziali, 'utente:password' decodificato].
+ * Serve perche' con le credenziali dentro l'URL curl fa SOLO Basic auth,
+ * mentre i server ISAPI (Hikvision) richiedono il Digest: passandole con
+ * CURLOPT_USERPWD + CURLAUTH_ANY libcurl negozia il metodo giusto.
+ */
+function mwp_split_auth($url) {
+    if (!preg_match('#^(https?://)([^@/:]+):([^@/]+)@#i', (string) $url, $m)) {
+        return [$url, ''];
+    }
+    $clean = $m[1] . substr($url, strlen($m[0]));
+    return [$clean, rawurldecode($m[2]) . ':' . rawurldecode($m[3])];
+}
+
+/**
+ * Opzioni cURL browser-like condivise dal fetch singolo (mwp_curl_get) e
+ * da quello parallelo del cron (mwp_curl_multi_fetch, v3.32).
+ * $insecure = true disattiva la verifica del certificato (self-signed).
+ * v3.39: $userpwd = credenziali HTTP ('utente:password') estratte dall'URL.
+ */
+function mwp_curl_opts($ua, $referer, $insecure, $forceHttp1 = false, $userpwd = '') {
     $opts = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
@@ -455,6 +486,14 @@ function mwp_curl_opts($ua, $referer, $insecure, $forceHttp1 = false) {
     if (defined('CURL_IPRESOLVE') && defined('CURL_IPRESOLVE_V4')) {
         $opts[CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
     }
+    // v3.39: autenticazione HTTP Basic/Digest (es. webcam Hikvision ISAPI con
+    // URL http://utente:password@host/...). CURLAUTH_ANY lascia a libcurl la
+    // negoziazione: con le credenziali nell'URL farebbe solo Basic e i server
+    // ISAPI rispondono 401 anche se l'URL funziona da browser.
+    if ($userpwd !== '' && defined('CURLAUTH_ANY')) {
+        $opts[CURLOPT_USERPWD] = $userpwd;
+        $opts[CURLOPT_HTTPAUTH] = CURLAUTH_ANY;
+    }
     if ($referer !== '') {
         $opts[CURLOPT_REFERER] = $referer;
     }
@@ -466,8 +505,11 @@ function mwp_curl_opts($ua, $referer, $insecure, $forceHttp1 = false) {
  * $insecure = true disattiva la verifica del certificato (per i self-signed).
  */
 function mwp_curl_get($url, $ua, $referer, $insecure, $forceHttp1 = false) {
-    $ch = curl_init($url);
-    curl_setopt_array($ch, mwp_curl_opts($ua, $referer, $insecure, $forceHttp1));
+    // v3.39: credenziali nell'URL (utente:password@host) fuori dall'URL e
+    // dentro CURLOPT_USERPWD con CURLAUTH_ANY (Basic o Digest).
+    list($fetchUrl, $userpwd) = mwp_split_auth($url);
+    $ch = curl_init($fetchUrl);
+    curl_setopt_array($ch, mwp_curl_opts($ua, $referer, $insecure, $forceHttp1, $userpwd));
     $data  = curl_exec($ch);
     $code  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $type  = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
@@ -538,11 +580,13 @@ function mwp_curl_multi_fetch($group, $maxWait = 30) {
             || !in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)) {
             continue;
         }
-        $ch = curl_init($url);
+        // v3.39: credenziali nell'URL -> CURLOPT_USERPWD + CURLAUTH_ANY
+        list($fetchUrl, $userpwd) = mwp_split_auth($url);
+        $ch = curl_init($fetchUrl);
         if (!$ch) {
             continue;
         }
-        curl_setopt_array($ch, mwp_curl_opts($ua, mwp_referer_for($cam), false));
+        curl_setopt_array($ch, mwp_curl_opts($ua, mwp_referer_for($cam), false, false, $userpwd));
         curl_multi_add_handle($mh, $ch);
         $map[] = ['ch' => $ch, 'slug' => $cam['slug']];
     }
