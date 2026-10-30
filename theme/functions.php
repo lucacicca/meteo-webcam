@@ -397,7 +397,7 @@ function mwt_fi_webp_run() {
 			 WHERE pm.meta_key = '_thumbnail_id'"
 		);
 		echo '<p><strong>Dry-run.</strong> Allegati JPEG in coda: <strong>' . count( $todo ) . '</strong> (censiti in totale: ' . $total . '). Featured PNG escluse: ' . $png . '.</p>';
-		echo '<p>Per convertire: <code>?mwt_fi_webp=1&amp;go=1</code> (10 allegati per richiesta). Aggiungi <code>&amp;auto=1</code> per l'auto-ripetizione fino a fine coda.</p>';
+		echo '<p>Per convertire: <code>?mwt_fi_webp=1&amp;go=1</code> (10 allegati per richiesta). Aggiungi <code>&amp;auto=1</code> per l\'auto-ripetizione fino a fine coda.</p>';
 		exit;
 	}
 
