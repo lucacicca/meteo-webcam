@@ -1,3 +1,9 @@
+## Tema Meteo Webcam — functions.php v1.6 (31 ottobre 2026) — versione pulita post-conversione
+
+- Rimossa l'intera sezione snippet una-tantum `mwt_fi_webp` della v1.5: conversione featured images JPEG→WebP completata in produzione (coda esaurita, esiti OK per ogni allegato: pieno/large/mwt-card).
+- Nessun altro cambiamento funzionale: filtri cron `mwp_cron_batch` 120 e `mwp_cron_time_budget` 55s invariati.
+- Pulizia successiva (via FTP, non urgente): i vecchi file .jpg delle featured restano in `wp-content/uploads/` come backup; cancellarli solo dopo qualche giorno di verifica visiva del sito.
+
 ## Tema Meteo Webcam — functions.php v1.5 (30 ottobre 2026) — featured images JPEG → WebP
 
 - Snippet una-tantum `mwt_fi_webp`: converte in WebP (qualità 82) le immagini in evidenza dei post/pagine pubblicati — il file pieno (solo se larghezza ≤ 2560px: oltre si rischia la memoria GD sull'hosting condiviso), la taglia `large` (featured del post singolo, ricodificando il file già ridimensionato) e `mwt-card` 640×360 (se manca viene generata dal pieno: rigenero delle thumbnail rinviato).
