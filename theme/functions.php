@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '1.6' ); // v1.6: versione pulita post-conversione featured images JPEG->WebP (snippet rimosso)
+define( 'MWT_VERSION', '1.7' ); // v1.7: bump per il cache-bust del CSS con embed video responsive
 
 /* ============ Setup ============ */
 
