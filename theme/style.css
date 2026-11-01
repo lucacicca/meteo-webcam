@@ -3,7 +3,7 @@ Theme Name: Meteo Webcam
 Theme URI: https://www.meteo-webcam.it
 Author: Luca Ciccarelli
 Description: Tema leggero e ottimizzato per meteo-webcam.it: un post, un'immagine in evidenza e le immagini live delle webcam servite dal plugin Meteo Webcam Proxy. Compatibile con Google Site Kit / AdSense.
-Version: 1.0
+Version: 1.7
 Requires at least: 6.0
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -163,6 +163,28 @@ a:hover, a:focus { color: var(--accent-dark); text-decoration: underline; }
 .post-content img.mwp-img {
   width: 100%;
   height: auto;
+}
+
+/* Embed video (YouTube, windy, panomax…): mai più larghi del contenuto.
+   Gli iframe incollati con l'editor classico hanno width="560" fissa e su mobile
+   sforano la colonna del post; add_theme_support('responsive-embeds') copre solo
+   i blocchi Gutenberg (che qui non si usano). */
+.post-content iframe,
+.post-content object,
+.post-content embed {
+  max-width: 100%;
+}
+
+/* YouTube: full-width e proporzione 16:9 su ogni schermo */
+.post-content iframe[src*="youtube"],
+.post-content iframe[src*="youtu.be"],
+.post-content iframe[src*="youtube-nocookie"] {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  display: block;
+  border: 0;
+  border-radius: var(--radius);
 }
 
 /* AdSense (inseriti da Site Kit): centra gli annunci automatici/in-manuali */
