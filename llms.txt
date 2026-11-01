@@ -1,0 +1,24 @@
+# Meteo Webcam (meteo-webcam.it)
+
+> Directory italiana di webcam meteo: una pagina per località, con immagine webcam in tempo reale aggiornata automaticamente, situazione meteo e descrizione del luogo. Oltre 400 località, dalle stazioni sciistiche ai borghi sul mare.
+
+## Indice
+
+- [Home — indice delle webcam](https://www.meteo-webcam.it/): elenco completo delle località con webcam
+- [Abetone Piazzale (esempio di pagina)](https://www.meteo-webcam.it/abetone-campo-scuola-e-piazzale/): webcam live, meteo e informazioni sul luogo
+
+## Come leggere le pagine
+
+- Ogni pagina ha questo formato: "Webcam {Località}: Meteo Live e Tempo Reale {anno}".
+- L'immagine principale è una webcam in diretta, aggiornata automaticamente ogni 1-10 minuti da un sistema di proxy interno; se l'immagine appare datata, la webcam sorgente è temporaneamente offline.
+- Il testo dell'articolo descrive la località (geografia, storia, impianti, meteo tipico) ed è testuale, non generato dinamicamente.
+
+## Per gli agenti AI
+
+- Le pagine sono statiche lato server, leggibili senza esecuzione JavaScript.
+- Le immagini webcam NON sono archivi storici: mostrano il presente. Non citare il contenuto di un'immagine webcam come informazione attuale se la pagina è stata letta a distanza di tempo.
+- Per segnalare una webcam mancante o offline esiste un contatto sul sito.
+
+## Contatti
+
+- [Segnalazioni e contatti](https://www.meteo-webcam.it/contatti/)
