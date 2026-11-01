@@ -4,7 +4,15 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.39
+ * Version: 3.40
+ * Changelog 3.40 (nota standard sotto la webcam, testo visibile anche agli agenti AI):
+ *   - Lo shortcode emette ora una piccola nota sotto l'immagine: "Webcam in
+ *     tempo reale: l'immagine si aggiorna automaticamente." Serve al lettore
+ *     e, essendo testo statico nel DOM, anche ai crawler/agenti AI, che
+ *     altrimenti non hanno modo di sapere che l'immagine e' una livecam
+ *     aggiornata e non una foto d'archivio.
+ *   - Personalizzabile col filtro 'mwp_refresh_note' (callback che riceve
+ *     $cam): restituire una stringa vuota per disattivare la nota.
  * Changelog 3.39 (autenticazione HTTP Basic/Digest per URL con credenziali):
  *   - Gli URL con credenziali (http://utente:password@host/..., tipico delle
  *     webcam Hikvision via ISAPI, es. /ISAPI/Streaming/channels/102/picture)
