@@ -1,3 +1,9 @@
+## Tema Meteo Webcam — v1.7 (1 novembre 2026) — embed video responsive
+
+- Su mobile gli iframe YouTube incollati nei post con l'editor classico mantengono width="560" fissa e sforano la colonna del contenuto (es. /abetone-campo-scuola-e-piazzale/): add_theme_support('responsive-embeds') copre solo i blocchi Gutenberg, non usati nei post storici.
+- style.css: tutti gli iframe/object/embed del contenuto non possono superare la larghezza del contenitore (max-width: 100%); gli iframe YouTube (youtube.com / youtu.be / youtube-nocookie) diventano full-width con aspect-ratio 16:9 e height auto.
+- Header di style.css portato a Version: 1.7 e MWT_VERSION bumpato a 1.7 per il cache-bust (?ver=1.7).
+
 ## Tema Meteo Webcam — functions.php v1.6 (31 ottobre 2026) — versione pulita post-conversione
 
 - Rimossa l'intera sezione snippet una-tantum `mwt_fi_webp` della v1.5: conversione featured images JPEG→WebP completata in produzione (coda esaurita, esiti OK per ogni allegato: pieno/large/mwt-card).
