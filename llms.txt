@@ -1,24 +1,24 @@
 # Meteo Webcam (meteo-webcam.it)
 
-> Directory italiana di webcam meteo: una pagina per località, con immagine webcam in tempo reale aggiornata automaticamente, situazione meteo e descrizione del luogo. Oltre 400 località, dalle stazioni sciistiche ai borghi sul mare.
+> Italian directory of live weather webcams: one page per location, with a real-time webcam image refreshed automatically, current weather and a description of the place. Over 400 locations, from ski resorts to seaside villages.
 
-## Indice
+## Index
 
-- [Home — indice delle webcam](https://www.meteo-webcam.it/): elenco completo delle località con webcam
-- [Abetone Piazzale (esempio di pagina)](https://www.meteo-webcam.it/abetone-campo-scuola-e-piazzale/): webcam live, meteo e informazioni sul luogo
+- [Home — full webcam directory](https://www.meteo-webcam.it/): complete list of locations with webcams
+- [Abetone Piazzale (example page)](https://www.meteo-webcam.it/abetone-campo-scuola-e-piazzale/): live webcam, weather and local information
 
-## Come leggere le pagine
+## How to read the pages
 
-- Ogni pagina ha questo formato: "Webcam {Località}: Meteo Live e Tempo Reale {anno}".
-- L'immagine principale è una webcam in diretta, aggiornata automaticamente ogni 1-10 minuti da un sistema di proxy interno; se l'immagine appare datata, la webcam sorgente è temporaneamente offline.
-- Il testo dell'articolo descrive la località (geografia, storia, impianti, meteo tipico) ed è testuale, non generato dinamicamente.
+- Every page follows this title pattern: "Webcam {Località}: Meteo Live e Tempo Reale {year}".
+- The main image is a live webcam, automatically refreshed every 1-10 minutes by an internal proxy system; if the image looks outdated, the source webcam is temporarily offline.
+- The article text describes the location (geography, history, facilities, typical weather) and is plain static text, not dynamically generated.
 
-## Per gli agenti AI
+## For AI agents
 
-- Le pagine sono statiche lato server, leggibili senza esecuzione JavaScript.
-- Le immagini webcam NON sono archivi storici: mostrano il presente. Non citare il contenuto di un'immagine webcam come informazione attuale se la pagina è stata letta a distanza di tempo.
-- Per segnalare una webcam mancante o offline esiste un contatto sul sito.
+- Pages are server-rendered static HTML, fully readable without JavaScript execution.
+- Webcam images are NOT historical archives: they show the present. Do not describe the content of a webcam image as current information if the page was fetched some time ago.
+- To report a missing or offline webcam there is a contact page on the site.
 
-## Contatti
+## Contacts
 
-- [Segnalazioni webcam e contatti](https://www.meteo-webcam.it/segnalazioni/)
+- [Webcam reports and contacts](https://www.meteo-webcam.it/segnalazioni/)
