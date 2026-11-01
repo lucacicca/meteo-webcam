@@ -1,3 +1,10 @@
+## v3.40 (1 novembre 2026) — nota standard sotto la webcam (visibile anche agli agenti AI)
+
+- Lo shortcode `[mwp_webcam]` emette ora una piccola nota sotto l'immagine: "Webcam in tempo reale: l'immagine si aggiorna automaticamente." — testo statico nel DOM, utile al lettore e fondamentale per i crawler/agenti AI (ChatGPT, Gemini, Perplexity), che altrimenti non possono sapere che l'immagine è una livecam e non una foto d'archivio.
+- Nota piccola e neutra (12.5px, grigio), sotto l'immagine e sopra l'eventuale figcaption del credito; zero impatto su CLS perché è testo che segue l'immagine già dimensionata.
+- Personalizzabile col filtro `mwp_refresh_note` (riceve `$cam`): restituire una stringa vuota per disattivarla.
+- Nessun altro cambiamento: fetch, cron, cache e admin invariati.
+
 ## Tema Meteo Webcam — v1.7 (1 novembre 2026) — embed video responsive
 
 - Su mobile gli iframe YouTube incollati nei post con l'editor classico mantengono width="560" fissa e sforano la colonna del contenuto (es. /abetone-campo-scuola-e-piazzale/): add_theme_support('responsive-embeds') copre solo i blocchi Gutenberg, non usati nei post storici.
