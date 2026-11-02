@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '1.7' ); // v1.7: bump per il cache-bust del CSS con embed video responsive
+define( 'MWT_VERSION', '1.8' ); // v1.8: VideoObject JSON-LD per gli embed YouTube (indicizzazione video GSC)
 
 /* ============ Setup ============ */
 
@@ -151,6 +151,90 @@ function mwt_widgets_init() {
 }
 add_action( 'widgets_init', 'mwt_widgets_init' );
 
+/* ============ Video SEO: VideoObject JSON-LD per embed YouTube (v1.8) ============ */
+
+/**
+ * GSC (novembre 2026): le pagine con video YouTube embed NON vengono indicizzate
+ * come pagine video, mentre quelle con file .mp4 diretto nell'HTML sì (es. tre-cime
+ * vs san-pellegrino). Google vede l'iframe ma senza dati strutturati VideoObject il
+ * video resta "supplementary content" e la pagina watch di YouTube resta l'unica
+ * ospite canonica del video. Questo snippet emette un VideoObject per ogni embed
+ * YouTube trovato nel contenuto del post, con thumbnail = featured image del post.
+ *
+ * Pattern riconosciuti (oEmbed WP e iframe incollati a mano):
+ *   youtube.com/embed/{ID}  youtube.com/live/{ID}  youtube.com/v/{ID}
+ *   youtube-nocookie.com/embed/{ID}  youtu.be/{ID}
+ */
+function mwt_youtube_video_ids( $content ) {
+	$ids = array();
+	if ( preg_match_all( '#(?:youtube(?:-nocookie)?\.com/(?:embed|live|v)/([A-Za-z0-9_-]{11})|youtu\.be/([A-Za-z0-9_-]{11}))#i', (string) $content, $m ) ) {
+		$count = count( $m[0] );
+		for ( $i = 0; $i < $count; $i++ ) {
+			$id = $m[1][ $i ] ? $m[1][ $i ] : $m[2][ $i ];
+			if ( $id ) {
+				$ids[ $id ] = true; // dedup: stesso video embeddato più volte
+			}
+		}
+	}
+	return array_keys( $ids );
+}
+
+/**
+ * Stampa in <head> un VideoObject JSON-LD per ogni embed YouTube del post.
+ * Campi richiesti da Google: name, thumbnailUrl, uploadDate (+ embedUrl o contentUrl).
+ */
+function mwt_video_schema() {
+	if ( ! is_singular( 'post' ) ) {
+		return;
+	}
+	$post = get_post();
+	if ( ! $post || 'publish' !== $post->post_status ) {
+		return;
+	}
+
+	$ids = mwt_youtube_video_ids( $post->post_content );
+	if ( empty( $ids ) ) {
+		return;
+	}
+
+	// Thumbnail: la featured image del post (nostro dominio, sempre raggiungibile);
+	// fallback la miniatura standard di YouTube.
+	$thumb = '';
+	if ( has_post_thumbnail( $post ) ) {
+		$thumb = get_the_post_thumbnail_url( $post, 'large' );
+	}
+
+	$desc = wp_strip_all_tags( get_the_excerpt( $post ) );
+	$desc = mb_substr( $desc, 0, 200 );
+
+	$graph = array();
+	foreach ( $ids as $id ) {
+		$graph[] = array(
+			'@type'         => 'VideoObject',
+			'@id'           => get_permalink( $post ) . '#video-' . $id,
+			'name'          => get_the_title( $post ) . ' — video',
+			'description'   => $desc,
+			'thumbnailUrl'  => array( $thumb ? $thumb : 'https://i.ytimg.com/vi/' . $id . '/maxresdefault.jpg' ),
+			'uploadDate'    => get_the_date( 'c', $post ),
+			'embedUrl'      => 'https://www.youtube.com/embed/' . $id,
+			'contentUrl'    => 'https://www.youtube.com/watch?v=' . $id,
+			'isFamilyFriendly' => true,
+			'inLanguage'    => 'it-IT',
+		);
+	}
+
+	// Filtro per disattivare o modificare l'output (return array vuoto = niente schema).
+	$graph = apply_filters( 'mwt_video_schema', $graph, $post );
+	if ( empty( $graph ) ) {
+		return;
+	}
+
+	echo '<script type="application/ld+json">'
+		. wp_json_encode( $graph, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+		. '</script>' . "\n";
+}
+add_action( 'wp_head', 'mwt_video_schema', 20 );
+
 /* ============ Meteo Webcam Proxy — cron (scala ~713 webcam) ============ */
 
 // Con 713 webcam a TTL 600 servirebbero ~71 fetch/minuto. Il cron esterno
@@ -180,4 +264,8 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *    "missing" colmate nel primo giro completo (~30 min). Se fresh resta 0
  *    il collo di bottiglia è altrove (per-fetch >4s): prossima mossa =
  *    fetch parallelo (curl_multi) lato plugin, v3.32.
+ * 5) v1.8: dopo il deploy, flush della page cache W3TC; verificare nel sorgente
+ *    di una pagina con embed (es. /san-pellegrino-in-alpe/) il nuovo blocco
+ *    <script type="application/ld+json"> con i VideoObject, poi richiedere la
+ *    reindicizzazione in GSC e controllare il report Video dopo qualche giorno.
  */

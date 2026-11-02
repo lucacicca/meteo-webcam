@@ -1,3 +1,11 @@
+## Tema Meteo Webcam — functions.php v1.8 (2 novembre 2026) — VideoObject JSON-LD per embed YouTube (GSC video indexing)
+
+- Report Video di Google Search Console: le pagine con video YouTube embed NON venivano indicizzate come pagine video (es. /san-pellegrino-in-alpe/), mentre quelle con file .mp4 direttamente nell'HTML sì (es. /tre-cime-di-lavaredo-dalla-malga-langalm/). Google vede l'iframe (l'ispezione GSC mostra video content URL + thumbnail fornita dalla piattaforma) ma senza dati strutturati il video resta "supplementary content" e la pagina watch di YouTube resta l'unica ospite canonica del video.
+- Nuova `mwt_video_schema` (hook `wp_head`, prio 20): sui post singoli pubblicati scandisce il contenuto per ID YouTube — `youtube.com/embed|live|v/{ID}`, `youtube-nocookie.com/embed/{ID}`, `youtu.be/{ID}`, coprendo sia gli iframe oEmbed di WordPress sia quelli incollati a mano — ed emette un VideoObject per ogni video unico (dedup per ID).
+- Campi: `name` (titolo post + " — video"), `description` (excerpt, 200 caratteri), `thumbnailUrl` (featured image in taglia `large`; fallback `i.ytimg.com/vi/{ID}/maxresdefault.jpg`), `uploadDate` (data del post), `embedUrl` + `contentUrl`, `isFamilyFriendly`, `inLanguage`.
+- Filtro `mwt_video_schema` per modificare o disattivare l'output (array vuoto = niente schema). `MWT_VERSION` bumpata a 1.8 (cache-bust del CSS invariato, nessun cambio visivo).
+- Deploy: caricare via FTP il functions.php, flush page cache W3TC, verificare il blocco `<script type="application/ld+json">` su una pagina con embed (es. /san-pellegrino-in-alpe/), poi richiedere la reindicizzazione in GSC e monitorare il report Video dopo qualche giorno.
+
 ## v3.40 (1 novembre 2026) — nota standard sotto la webcam (visibile anche agli agenti AI)
 
 - Lo shortcode `[mwp_webcam]` emette ora una piccola nota sotto l'immagine: "Webcam in tempo reale: l'immagine si aggiorna automaticamente." — testo statico nel DOM, utile al lettore e fondamentale per i crawler/agenti AI (ChatGPT, Gemini, Perplexity), che altrimenti non possono sapere che l'immagine è una livecam e non una foto d'archivio.
@@ -27,11 +35,11 @@
 ## v3.39 (30 ottobre 2026) — autenticazione HTTP Basic/Digest per URL con credenziali
 
 - Gli URL con credenziali (`http://utente:password@host/...`, tipico delle webcam Hikvision via ISAPI, es. `/ISAPI/Streaming/channels/102/picture`) fallivano con 401 pur funzionando da browser: curl con le credenziali dentro l'URL tenta SOLO il Basic auth, mentre questi server richiedono il Digest.
-- Fix: le credenziali vengono estratte dall'URL (nuova helper `mwp_split_auth`) e passate con `CURLOPT_USERPWD` + `CURLAUTH_ANY`, così libcurl negozia Basic o Digest automaticamente. Applicato sia al fetch singolo (`mwp_fetch` / pulsante Test) sia al fetch parallelo del cron (`mwp_curl_multi_fetch`).
+- Fix: le credenziali vengono estratte dall'URL (nuova helper `mwp_split_auth`) e passate via `CURLOPT_USERPWD` + `CURLAUTH_ANY`, così libcurl negozia Basic o Digest automaticamente. Applicato sia al fetch singolo (`mwp_fetch` / pulsante Test) sia al fetch parallelo del cron (`mwp_curl_multi_fetch`).
 
 ## v3.38 (29 ottobre 2026) — retry HTTP/1.1 forzato dopo errori di framing HTTP/2
 
-errno 92 ("Stream error in the HTTP/2 framing layer") o 16: la libcurl dell'hosting negozia HTTP/2 con certi server (es. su Google Cloud) e lo stream muore a metà. Caso reale: il Test su https://includi.insidesrl.eu/dueporti/dueporti.jpg falliva in 470 ms con errno 92 (server 35.214.219.154, GCP), DNS e connessione OK.
+errno 92 ("Stream error in the HTTP/2 framing layer") o 16: la libcurl dell'hosting negozia HTTP/2 con certi server (es. su Google Cloud: caso reale includi.insidesrl.eu/dueporti/dueporti.jpg, Test fallito 470ms errno 92, server 35.214.219.154, GCP, DNS e connessione OK) e lo stream muore a metà.
 
 - mwp_fetch ora riprova automaticamente forzando HTTP/1.1 dopo questi errori (con eventuale secondo tentativo insecure se serve il certificato).
 - Il cron manda in coda di retry sequenziale di fine run anche i fetch paralleli falliti con errno 16/92: il retry sequenziale forza HTTP/1.1 e il server risponde.
@@ -51,7 +59,7 @@ errno 92 ("Stream error in the HTTP/2 framing layer") o 16: la libcurl dell'host
 Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + http 0: handle ancora in volo quando scade il budget del gruppo, o stall di curl_multi su quel server) veniva marcato come un fallimento e mandato in backoff progressivo senza alcun retry. Era il caso delle webcam che risultano OK al pulsante Test (mwp_fetch sequenziale) ma falliscono sempre nel cron: es. macinaie-monte-amiata-3 (Test OK 1920×1080, 224 KB, 84 ms; cron FAIL http 0 a ogni run, oldest 42h). Ora questi casi entrano nella coda di retry sequenziale di fine run (stesso percorso del Test): se il retry riesce, il fail marker viene cancellato e il backoff si azzera.
 
 ## v3.35 (28 ottobre 2026) — rimozione log diagnosi
-- Rimosso il log temporaneo su wp-content/mwp-cron-debug.log (introdotto in v3.33): la diagnosi del cron è chiusa con esito positivo — bug wrapper v3.32 fixato (v3.33), backoff progressivo attivo (v3.34). Verifica del 28/10 ore 16:27-17:03: run fino a 120 fetch riuscite in ~30s, cicli completi sul parco webcam, run vuoti (0 fetch, 0s) quando tutto è fresco; ~1.575 fetch riuscite in ~35 minuti contro le ~1,5-2/minuto pre-fix.
+- Rimosso il log temporaneo su wp-content/mwp-cron-debug.log (introdotto in v3.33): la diagnosi del cron è chiusa con esito positivo — bug wrapper v3.32 fixato (v3.33), backoff progressivo attivo (v3.34). Verifica del 28/10 ore 16:27-17:03: run fino a 120 fetch riuscite in ~30s, cicli completi sul parco webcam, run vuoti (0 fetch, 0s) quando tutto è fresco, ~1.575 fetch riuscite in ~35 minuti contro le ~1,5-2/minuto pre-fix.
 - Nessun altro cambiamento funzionale. Il file mwp-cron-debug.log esistente può essere cancellato dall'hosting.
 
 ## v3.34 (28 ottobre 2026) — backoff progressivo dei fetch falliti
@@ -79,19 +87,19 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 - Campo di ricerca nella pagina admin (nome, slug o attribuzione, param `mwp_s`), combinato con la paginazione.
 
 ## v3.30 (ottobre 2026) — admin a scala 700 webcam
-- Paginazione server-side di elenco e anteprime: 10/25/50/100 per pagina (menu a tendina) con frecce avanti/indietro.
+- Paginazione server-side di elenco e anteprime: 10/25/50/100 per pagina (menu a tendina con frecce avanti/indietro, default 10).
 - Ordinamento per data di inserimento decrescente: nuovo campo `added` (timestamp Unix) alla creazione (form admin o import CSV); le webcam pre-3.30, senza timestamp, restano in fondo in ordine alfabetico.
 - Salvataggio del form riscritto a "merge per pagina": il POST contiene solo le righe visibili (marker `mwp_page_slugs[]`), eliminazione esplicita via `mwp_delete_slugs[]` (cache pulita), webcam delle altre pagine intatte. Con 100/page il POST resta sotto ~1000 variabili: `max_input_vars` non è più un limite nemmeno per la tabella.
 
 ## v3.29 (ottobre 2026) — cache busting
 - Lo shortcode emette le URL con `?v={mtime del file pieno}`.
-- Scoperta: Tophost aggiunge via nginx una `Cache-Control: max-age=31536000` (+expires 1 anno) a TUTTE le immagini per MIME-type (policy globale, non removibile da PHP); il browser onora quella, non la max-age=600 del plugin — webcam ferma 30+ min verificata. Con il version parameter ogni refresh del cron produce URL nuovi e la cache lunga diventa innocua.
+- Scoperta: Tophost aggiunge via nginx una `Cache-Control: max-age=31536000` (+expires 1 anno) a TUTTE le immagini per MIME-type (policy globale, non removibile da PHP); il browser onora quella, non la max-age=600 del plugin — webcam ferma 30+ min verificata. Con il version parameter ogni refresh del cron produce URL nuovi e la cache lunga diventa innocua. La doppia Cache-Control resta ma neutralizzata.
 
 ## v3.28 (ottobre 2026)
 - URL pubblici senza estensione: `/webcam/{slug}`, `/webcam/{slug}/full`, `/webcam/{slug}/{w}`; retrocompatibilità totale con i vecchi `.jpg`/`-full.webp`/`-{w}.webp`.
 
-## v3.27 (ottobre 2026)
-- Fix del campo Referer: normalizzazione difensiva in `mwp_normalize_cam` (via prefissi `://` e `//`, schema aggiunto se manca, referer senza host valido → auto); campi con autocomplete="off".
+## v3.27 (ottobre 2026) — fix del campo Referer e import CSV
+- Normalizzazione difensiva in `mwp_normalize_cam` (via prefissi `://` e `//`, schema aggiunto se manca, referer senza host valido → auto) + `autocomplete="off"` sui campi (fix del bug che concatenava il valore precompilato con l'input senza schema).
 - Import CSV con casella "Aggiorna le webcam esistenti" (aggiorna nome/URL/referer/TTL/credito; cache azzerata se cambia URL o referer; conteggi espliciti).
 
 ## v3.26 (ottobre 2026) — monitoraggio
@@ -145,5 +153,5 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 - Fix: le anteprime admin (`?mwp_preview=1`) servono solo immagini già in cache senza fare fetch; anteprime `loading="lazy"`; canarino a fine form che blocca il save se il POST arriva troncato (max_input_vars).
 
 ## Note trasversali
-- Bug del salvataggio risolto in v3.13–v3.16: aggiungere webcam oltre la 40ª falliva — il campo credito della webcam "ostuni" conteneva ~32 MB di backslash raddoppiati a ogni salvataggio → POST da 50 MB → opzione serializzata oltre il max_allowed_packet di MySQL → update_option rifiutata in silenzio.
+- Bug del salvataggio risolto in v3.13–v3.16: aggiungere webcam oltre la 40ª falliva — il campo credito della webcam "ostuni" conteneva ~32 MB di backslash raddoppiati a ogni salvataggio → POST da 50 MB → opzione serializzata oltre il max_allowed_packet di MySQL → update_option rifiutata in silenzio mentre l'admin mostrava comunque "Salvate N webcam".
 - Revisione CWV della v3.21: i problemi erano fetch remoto sincrono in richiesta, varianti rigenerate dal primo visitatore dopo ogni refresh, `<img>` senza dimensioni (CLS), refresh JS inefficace con srcset, placeholder assente nel frontend.
