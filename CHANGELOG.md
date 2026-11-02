@@ -1,3 +1,12 @@
+## Tema Meteo Webcam — functions.php v1.9 (2 novembre 2026) — VideoObject anche per i file video diretti (caso Panomax)
+
+- Secondo caso dal report Video di GSC: anche le pagine con player HTML5 Panomax (`<video><source src="https://video.panomax.com/cams/{id}/videos/{id}_fullHD.mp4">`) non risultavano video indicizzati (es. /cortina-dampezzo-cinque-torri/), pur avendo l'mp4 direttamente nell'HTML come le pagine che funzionano (tre-cime, api.scenaridigitali.com).
+- Verifica del 2/11: video.panomax.com BLOCCA i client automatizzati sull'mp4 (protezione anti-hotlink) — probabile causa prima della non-indicizzazione; il VideoObject fornisce comunque a Google tutti i metadati.
+- Nuova `mwt_video_file_urls`: raccoglie (deduplicate) tutte le URL di file video `.mp4/.webm/.ogv/.m3u8` presenti nel contenuto del post — copre i `<source>` dei player HTML5 (Panomax) e gli mp4 incollati come link.
+- `mwt_video_schema` emette ora un VideoObject anche per questi file: `contentUrl` = URL del file, senza `embedUrl`; thumbnail = featured image (`large`) obbligatoria (requisito Google; senza featured il file viene saltato), `uploadDate` = data del post. Se stessi YouTube incolonnati alla stessa pagina, schema a blocchi separati.
+- `MWT_VERSION` bumpata a 1.9. Filtro `mwt_video_schema` invariato.
+- Nota limite: se Googlebot non riesce a scaricare l'mp4 da video.panomax.com (blocco anti-bot verificato), il video non verrà indicizzato comunque — in quel caso le strade sono contattare Panomax o accettare il limite; lo schema è in ogni caso la premessa necessaria.
+
 ## Tema Meteo Webcam — functions.php v1.8 (2 novembre 2026) — VideoObject JSON-LD per embed YouTube (GSC video indexing)
 
 - Report Video di Google Search Console: le pagine con video YouTube embed NON venivano indicizzate come pagine video (es. /san-pellegrino-in-alpe/), mentre quelle con file .mp4 direttamente nell'HTML sì (es. /tre-cime-di-lavaredo-dalla-malga-langalm/). Google vede l'iframe (l'ispezione GSC mostra video content URL + thumbnail fornita dalla piattaforma) ma senza dati strutturati il video resta "supplementary content" e la pagina watch di YouTube resta l'unica ospite canonica del video.
@@ -5,6 +14,7 @@
 - Campi: `name` (titolo post + " — video"), `description` (excerpt, 200 caratteri), `thumbnailUrl` (featured image in taglia `large`; fallback `i.ytimg.com/vi/{ID}/maxresdefault.jpg`), `uploadDate` (data del post), `embedUrl` + `contentUrl`, `isFamilyFriendly`, `inLanguage`.
 - Filtro `mwt_video_schema` per modificare o disattivare l'output (array vuoto = niente schema). `MWT_VERSION` bumpata a 1.8 (cache-bust del CSS invariato, nessun cambio visivo).
 - Deploy: caricare via FTP il functions.php, flush page cache W3TC, verificare il blocco `<script type="application/ld+json">` su una pagina con embed (es. /san-pellegrino-in-alpe/), poi richiedere la reindicizzazione in GSC e monitorare il report Video dopo qualche giorno.
+- ESITO: caricata in produzione il 2/11, VideoObject verificato nel sorgente (san-pellegrino-in-alpe, porto-di-pisa-marina-di-pisa); validazione GSC del motivo "Video isn't on a watch page" avviata il 2/11.
 
 ## v3.40 (1 novembre 2026) — nota standard sotto la webcam (visibile anche agli agenti AI)
 

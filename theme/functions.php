@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '1.8' ); // v1.8: VideoObject JSON-LD per gli embed YouTube (indicizzazione video GSC)
+define( 'MWT_VERSION', '1.9' ); // v1.9: VideoObject anche per i <video> mp4/webm/m3u8 (caso Panomax)
 
 /* ============ Setup ============ */
 
@@ -151,19 +151,20 @@ function mwt_widgets_init() {
 }
 add_action( 'widgets_init', 'mwt_widgets_init' );
 
-/* ============ Video SEO: VideoObject JSON-LD per embed YouTube (v1.8) ============ */
+/* ============ Video SEO: VideoObject JSON-LD per embed YouTube e file video (v1.8/v1.9) ============ */
 
 /**
- * GSC (novembre 2026): le pagine con video YouTube embed NON vengono indicizzate
- * come pagine video, mentre quelle con file .mp4 diretto nell'HTML sì (es. tre-cime
- * vs san-pellegrino). Google vede l'iframe ma senza dati strutturati VideoObject il
- * video resta "supplementary content" e la pagina watch di YouTube resta l'unica
- * ospite canonica del video. Questo snippet emette un VideoObject per ogni embed
- * YouTube trovato nel contenuto del post, con thumbnail = featured image del post.
+ * GSC (novembre 2026): le pagine con video embed NON venivano indicizzate
+ * come pagine video senza dati strutturati VideoObject. Questo snippet emette
+ * un VideoObject per ogni video trovato nel contenuto del post:
  *
- * Pattern riconosciuti (oEmbed WP e iframe incollati a mano):
+ * v1.8 — embed YouTube (oEmbed WP e iframe incollati a mano):
  *   youtube.com/embed/{ID}  youtube.com/live/{ID}  youtube.com/v/{ID}
  *   youtube-nocookie.com/embed/{ID}  youtu.be/{ID}
+ *
+ * v1.9 — file video diretti nei tag <video> (caso Panomax:
+ *   video.panomax.com/cams/{id}/videos/{id}_fullHD.mp4) e qualsiasi
+ *   URL .mp4/.webm/.ogv/.m3u8 presente nel contenuto.
  */
 function mwt_youtube_video_ids( $content ) {
 	$ids = array();
@@ -180,7 +181,22 @@ function mwt_youtube_video_ids( $content ) {
 }
 
 /**
- * Stampa in <head> un VideoObject JSON-LD per ogni embed YouTube del post.
+ * URL di file video diretti (mp4/webm/ogv/m3u8) presenti nel contenuto,
+ * deduplicati. Copre i <source> dei player HTML5 (Panomax) e gli mp4
+ * incollati come link/anchor nel testo.
+ */
+function mwt_video_file_urls( $content ) {
+	$urls = array();
+	if ( preg_match_all( '#https?://[^\s"\'<>]+?\.(mp4|webm|ogv|m3u8)(?=[\s"\'<>?]|$)#i', (string) $content, $m ) ) {
+		foreach ( $m[0] as $url ) {
+			$urls[ $url ] = true;
+		}
+	}
+	return array_keys( $urls );
+}
+
+/**
+ * Stampa in <head> un VideoObject JSON-LD per ogni video del post.
  * Campi richiesti da Google: name, thumbnailUrl, uploadDate (+ embedUrl o contentUrl).
  */
 function mwt_video_schema() {
@@ -192,13 +208,14 @@ function mwt_video_schema() {
 		return;
 	}
 
-	$ids = mwt_youtube_video_ids( $post->post_content );
-	if ( empty( $ids ) ) {
+	$ids  = mwt_youtube_video_ids( $post->post_content );
+	$urls = mwt_video_file_urls( $post->post_content );
+	if ( empty( $ids ) && empty( $urls ) ) {
 		return;
 	}
 
 	// Thumbnail: la featured image del post (nostro dominio, sempre raggiungibile);
-	// fallback la miniatura standard di YouTube.
+	// per YouTube fallback la miniatura standard di YouTube.
 	$thumb = '';
 	if ( has_post_thumbnail( $post ) ) {
 		$thumb = get_the_post_thumbnail_url( $post, 'large' );
@@ -208,6 +225,8 @@ function mwt_video_schema() {
 	$desc = mb_substr( $desc, 0, 200 );
 
 	$graph = array();
+
+	// Embed YouTube: embedUrl + contentUrl, thumbnail con fallback ytimg.
 	foreach ( $ids as $id ) {
 		$graph[] = array(
 			'@type'         => 'VideoObject',
@@ -218,6 +237,26 @@ function mwt_video_schema() {
 			'uploadDate'    => get_the_date( 'c', $post ),
 			'embedUrl'      => 'https://www.youtube.com/embed/' . $id,
 			'contentUrl'    => 'https://www.youtube.com/watch?v=' . $id,
+			'isFamilyFriendly' => true,
+			'inLanguage'    => 'it-IT',
+		);
+	}
+
+	// File video diretti (Panomax ecc.): solo contentUrl; serve una thumbnail
+	// (requisito Google): la featured image; senza featured si salta il file.
+	foreach ( $urls as $url ) {
+		$slug = md5( $url );
+		if ( ! $thumb ) {
+			continue;
+		}
+		$graph[] = array(
+			'@type'         => 'VideoObject',
+			'@id'           => get_permalink( $post ) . '#video-' . $slug,
+			'name'          => get_the_title( $post ) . ' — video',
+			'description'   => $desc,
+			'thumbnailUrl'  => array( $thumb ),
+			'uploadDate'    => get_the_date( 'c', $post ),
+			'contentUrl'    => $url,
 			'isFamilyFriendly' => true,
 			'inLanguage'    => 'it-IT',
 		);
@@ -268,4 +307,9 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *    di una pagina con embed (es. /san-pellegrino-in-alpe/) il nuovo blocco
  *    <script type="application/ld+json"> con i VideoObject, poi richiedere la
  *    reindicizzazione in GSC e controllare il report Video dopo qualche giorno.
+ * 6) v1.9: verificare il VideoObject con contentUrl panomax su una pagina con
+ *    player Panomax (es. /cortina-dampezzo-cinque-torri/). NOTA: video.panomax.com
+ *    blocca i client automatizzati sull'mp4 (verificato 2/11) — se Googlebot non
+ *    riesce a scaricare il file, il video non verrà indicizzato comunque: in quel
+ *    caso l'alternativa è contattare Panomax o accettare il limite.
  */
