@@ -87,3 +87,10 @@
 - Chiusura del lavoro sui temi: style.css portato a `Version: 2.0` con Description riscritta per la schermata Aspetto → Temi e riga `Tags:` aggiunta (blog, news, one-column, grid-layout, featured-images, custom-menu, translation-ready). Nessun cambio CSS né funzionale.
 - `MWT_VERSION` allineata a 2.0 (cache-bust). Screenshot `screenshot.png` 1200×900 da caricare via FTP nella cartella del tema.
 - Comunità WP: il tema NON è pubblicabile su wp.org perché dipende dal plugin privato Meteo Webcam Proxy (sito-specifico); resta d'uso interno + eventuale repo GitHub pubblico a solo scopo dimostrativo.
+
+## 2 novembre 2026 — Pulizia WP: DB, plugin e cartelle
+
+- Disinstallati i plugin TermsFeed AutoTerms, Converter for Media e Disable & Remove Google Fonts (ridondanti: webcam già WebP via MWP, featured convertite a mano in v1.5, tema senza font esterni). Rimosso anche Importatore WordPress; confermata assenza di Jetpack (già rimosso in precedenza).
+- Pulizia DB: DROP di 11 tabelle orfane di plugin disinstallati (wp_jetpack_sync_queue; wp_wpforms_ ×4; wp_smush_dir_images; wp_tm_taskmeta/wp_tm_tasks di WP-Optimize; wp_actionscheduler_ ×4 usate da TermsFeed) + opzioni orfane in wp_options (jetpack%, wpforms_%, smush%, actionscheduler%, termsfeed/autoterms, converter_for_media, drgf). Tenute: core, IndexNow ×3, Redirection ×4, Yoast ×7; wp_related_post_stats resta finché Contextual Related Posts è attivo.
+- Verifica post-pulizia su /webcam/mwp-status: healthy true, total 632, fresh 614 (97%), stale 13, backoff 6, missing 5 — nessun impatto sul plugin (MWP non usa tabelle MySQL, solo option).
+- Da verificare in WP Crontrol (reinstallandolo se rimosso) gli eventi cron orfani updraftplus/smush/blc e di altri plugin rimossi.
