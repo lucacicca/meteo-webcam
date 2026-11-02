@@ -81,3 +81,9 @@
 - Verifica 2/11: l'mp4 di video.panomax.com BLOCCA i client automatizzati (open_url: "site blocked automated access") → probabile protezione anti-hotlink; possibile che anche Googlebot non riesca a scaricare il file (causa prima della non-indicizzazione, indipendente dal markup).
 - Fix v1.9 in functions.php: nuova `mwt_video_file_urls` raccoglie tutte le URL .mp4/.webm/.ogv/.m3u8 del contenuto (dedup) — copre i `<source>` Panomax e gli mp4 come link; `mwt_video_schema` emette VideoObject con contentUrl = file (senza embedUrl), thumbnail = featured image obbligatoria (senza featured il file è saltato).
 - Da fare: FTP del functions.php v1.9, flush W3TC, verificare il VideoObject con contentUrl panomax su /cortina-dampezzo-cinque-torri/, reindicizzare in GSC. ATTENZIONE: se Googlebot non riesce a scaricare l'mp4 (blocco anti-bot panomax), il video non verrà indicizzato comunque — in quel caso le opzioni sono contattare Panomax o accettare il limite; lo schema resta la premessa necessaria.
+
+## 2 novembre 2026 — Tema v2.0: header description + tags per la preview
+
+- Chiusura del lavoro sui temi: style.css portato a `Version: 2.0` con Description riscritta per la schermata Aspetto → Temi e riga `Tags:` aggiunta (blog, news, one-column, grid-layout, featured-images, custom-menu, translation-ready). Nessun cambio CSS né funzionale.
+- `MWT_VERSION` allineata a 2.0 (cache-bust). Screenshot `screenshot.png` 1200×900 da caricare via FTP nella cartella del tema.
+- Comunità WP: il tema NON è pubblicabile su wp.org perché dipende dal plugin privato Meteo Webcam Proxy (sito-specifico); resta d'uso interno + eventuale repo GitHub pubblico a solo scopo dimostrativo.
