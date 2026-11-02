@@ -1,3 +1,10 @@
+## Tema Meteo Webcam — style.css/functions.php v2.0 (2 novembre 2026) — header description + tags per la preview del tema
+
+- Preparazione alla pubblicazione/preview: header di style.css portato a `Version: 2.0` con Description riscritta (tema leggero per directory di webcam meteo e blog di viaggio, zero JS, un solo foglio di stile, integrazione Meteo Webcam Proxy / Site Kit / AdSense) e riga `Tags:` aggiunta (blog, news, one-column, grid-layout, featured-images, custom-menu, translation-ready).
+- Nessun cambio CSS né funzionale: solo metadati dell'header per la schermata Aspetto → Temi e per un'eventuale pubblicazione.
+- `MWT_VERSION` bumpata a 2.0 in functions.php per allineare il cache-bust all'header.
+- Screenshot `screenshot.png` (1200×900) da caricare via FTP nella cartella del tema.
+
 ## Tema Meteo Webcam — functions.php v1.9 (2 novembre 2026) — VideoObject anche per i file video diretti (caso Panomax)
 
 - Secondo caso dal report Video di GSC: anche le pagine con player HTML5 Panomax (`<video><source src="https://video.panomax.com/cams/{id}/videos/{id}_fullHD.mp4">`) non risultavano video indicizzati (es. /cortina-dampezzo-cinque-torri/), pur avendo l'mp4 direttamente nell'HTML come le pagine che funzionano (tre-cime, api.scenaridigitali.com).
