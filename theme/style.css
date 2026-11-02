@@ -2,13 +2,14 @@
 Theme Name: Meteo Webcam
 Theme URI: https://www.meteo-webcam.it
 Author: Luca Ciccarelli
-Description: Tema leggero e ottimizzato per meteo-webcam.it: un post, un'immagine in evidenza e le immagini live delle webcam servite dal plugin Meteo Webcam Proxy. Compatibile con Google Site Kit / AdSense.
-Version: 1.7
+Description: Tema leggero per directory di webcam meteo e blog di viaggio: home a griglia di card 16:9, articolo singolo con immagine in evidenza e webcam live servite dal plugin Meteo Webcam Proxy. Zero JavaScript nel tema, un solo foglio di stile, nessuna richiesta esterna. Compatibile con Google Site Kit / AdSense.
+Version: 2.0
 Requires at least: 6.0
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: meteo-webcam
+Tags: blog, news, one-column, grid-layout, featured-images, custom-menu, translation-ready
 */
 
 /* ============ Base ============ */
