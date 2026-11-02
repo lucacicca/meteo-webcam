@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '1.9' ); // v1.9: VideoObject anche per i <video> mp4/webm/m3u8 (caso Panomax)
+define( 'MWT_VERSION', '2.0' ); // v2.0: header del tema (description + tags) per la preview; nessun cambio funzionale
 
 /* ============ Setup ============ */
 
