@@ -1,3 +1,10 @@
+## Tema Meteo Webcam — functions.php v2.1 (5 novembre 2026) — sitemap Yoast senza stylesheet XSLT (deprecazione XSLT nei browser)
+
+- Sintomo: aprendo /sitemap_index.xml Chrome mostra il banner "This site uses XSLT; that functionality is being removed from this browser very soon". Chrome 158 (17/11/2026) rimuove il supporto XSLT; anche Firefox e WebKit hanno annunciato la stessa intenzione. L'istruzione `<?xml-stylesheet type="text/xsl" ... main-sitemap.xsl?>` emessa da Yoast serve SOLO alla vista formattata della sitemap per gli umani: Google/Bing leggono l'XML grezzo, quindi NESSUN impatto SEO né sulla scansione.
+- Fix: nuovo filtro sul `wpseo_stylesheet_url` in functions.php — l'istruzione xml-stylesheet viene rimossa (XML grezzo, addio banner) finché è di tipo `text/xsl`. Quando Yoast ≥ 28.9 la sostituirà con un foglio di stile CSS (`type="text/css"`), questo passa intatto e la vista leggibile della sitemap torna da sola con l'aggiornamento del plugin.
+- `MWT_VERSION` bumpata a 2.1 (cache-bust del CSS invariato, nessun cambio visivo).
+- Deploy: caricare via FTP il solo functions.php in wp-content/themes/meteo-webcam/, flush page cache W3TC (le sitemap XML sono page-cached), riaprire /sitemap_index.xml e verificare nel sorgente l'assenza dell'istruzione xml-stylesheet e del banner.
+
 ## Tema Meteo Webcam — style.css/functions.php v2.0 (2 novembre 2026) — header description + tags per la preview del tema
 
 - Preparazione alla pubblicazione/preview: header di style.css portato a `Version: 2.0` con Description riscritta (tema leggero per directory di webcam meteo e blog di viaggio, zero JS, un solo foglio di stile, integrazione Meteo Webcam Proxy / Site Kit / AdSense) e riga `Tags:` aggiunta (blog, news, one-column, grid-layout, featured-images, custom-menu, translation-ready).
@@ -80,7 +87,7 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 - Nessun altro cambiamento funzionale. Il file mwp-cron-debug.log esistente può essere cancellato dall'hosting.
 
 ## v3.34 (28 ottobre 2026) — backoff progressivo dei fetch falliti
-- Il log v3.33 ha mostrato che ~95 webcam morte (404/403/500/503/connessioni) restavano per sempre in testa alla coda stale e bruciavano l'intero budget dei run (4 run su 5 con 0 successi, 42-78 fail l'uno).
+- Il log v3.33 ha mostrato che ~95 webcam morte (404/403/500/503/connessione) restavano per sempre in testa alla coda stale e bruciavano l'intero budget dei run (4 run su 5 con 0 successi, 42-78 fail l'uno).
 - Ora ogni fallimento consecutivo raddoppia l'attesa prima del retry: 60s, 2m, 4m, 8m, ... fino a 24h (tetto min(86400, base * 2^(count-1)), base = mwp_backoff_seconds). Il marker -fail.marker contiene il conteggio dei fallimenti consecutivi (retrocompatibile: marker vuoto pre-3.34 = 1). Al primo successo marker cancellato, contatore azzerato.
 - Helper: mwp_fail_marker_path/mwp_fail_backoff/mwp_in_backoff/mwp_mark_fail/mwp_clear_fail; cron, cold-start (mwp_ensure_full) e status endpoint usano tutti la stessa logica.
 - Il log di diagnosi resta attivo, si rimuove in v3.35 dopo verifica.

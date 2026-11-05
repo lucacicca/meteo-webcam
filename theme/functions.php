@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.0' ); // v2.0: header del tema (description + tags) per la preview; nessun cambio funzionale
+define( 'MWT_VERSION', '2.1' ); // v2.1: rimozione stylesheet XSLT dalle sitemap Yoast (deprecazione XSLT nei browser)
 
 /* ============ Setup ============ */
 
@@ -82,6 +82,26 @@ remove_action( 'wp_body_open', 'wp_global_styles_render_svg_filters' );
 
 // XML-RPC non usato: meno superficie di attacco.
 add_filter( 'xmlrpc_enabled', '__return_false' );
+
+/* ============ Sitemap Yoast: via lo stylesheet XSLT (v2.1) ============ */
+
+/*
+ * Chrome 158 (17 novembre 2026) rimuove il supporto XSLT: le sitemap di
+ * Yoast dichiarano `<?xml-stylesheet type="text/xsl" ... main-sitemap.xsl?>`
+ * solo per la vista formattata degli umani, e Chrome mostra già il banner
+ * "This site uses XSLT...". I crawler (Google/Bing) leggono l'XML grezzo:
+ * lo stylesheet non ha alcun ruolo SEO, questa è una fix cosmetica.
+ *
+ * Il filtro svuota l'istruzione finché è di tipo text/xsl. Quando Yoast
+ * (>= 28.9) la sostituirà con un foglio di stile CSS (type="text/css"),
+ * questo passa intatto e la vista leggibile torna da sé.
+ */
+add_filter( 'wpseo_stylesheet_url', function ( $stylesheet ) {
+	if ( false !== strpos( (string) $stylesheet, 'text/xsl' ) ) {
+		return '';
+	}
+	return $stylesheet;
+} );
 
 /* ============ Contenuto ============ */
 
@@ -312,4 +332,8 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *    blocca i client automatizzati sull'mp4 (verificato 2/11) — se Googlebot non
  *    riesce a scaricare il file, il video non verrà indicizzato comunque: in quel
  *    caso l'alternativa è contattare Panomax o accettare il limite.
+ * 7) v2.1: dopo il deploy FTP del solo functions.php, flush page cache W3TC
+ *    (le sitemap XML sono page-cached: il footer W3TC compare nel sorgente),
+ *    poi riaprire /sitemap_index.xml: niente banner XSLT e nessuna riga
+ *    <?xml-stylesheet?> nel sorgente. SEO invariato: i crawler leggono l'XML.
  */
