@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.2.1' ); // v2.2: snippet una-tantum mwt_link_test (test 10 link interni contestuali); v2.2.1: salta le occorrenze dentro i commenti HTML
+define( 'MWT_VERSION', '2.2.2' ); // v2.2: snippet una-tantum mwt_link_test; v2.2.1: salta le occorrenze nei commenti HTML; v2.2.2: skip anchor = frase chiave Yoast (link concorrenti) + modo undo
 
 /* ============ Setup ============ */
 
@@ -338,7 +338,7 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *    <?xml-stylesheet?> nel sorgente. SEO invariato: i crawler leggono l'XML.
  */
 
-/* ============ Snippet una-tantum: test link interni contestuali (v2.2 / v2.2.1) ============ */
+/* ============ Snippet una-tantum: test link interni contestuali (v2.2 / v2.2.2) ============ */
 
 /*
  * TEST del 6/11: inserisce 10 link interni contestuali (prime 10 righe del
@@ -347,6 +347,7 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *
  * wp-admin → ?mwt_link_test=1            dry-run (nessuna scrittura)
  * wp-admin → ?mwt_link_test=1&go=1       applica e riporta l'esito
+ * wp-admin → ?mwt_link_test=1&undo=1     rimuove i link applicati (testo ripristinato)
  *
  * Per ogni riga cerca nel post la PRIMA occorrenza libera della frase
  * (case-insensitive, confini di parola, non dentro <a> esistenti, non
@@ -355,6 +356,14 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  * maiuscole/accenti originali. Update via $wpdb senza revisioni;
  * flush W3TC per ogni post toccato. Idempotente: se il link è già
  * presente nel post, la riga viene saltata.
+ *
+ * Controllo "link concorrenti" Yoast (v2.2.2): se l'anchor della riga
+ * contiene la frase chiave del post (_yoast_wpseo_focuskw, Yoast free),
+ * la riga viene SALTATA — Yoast segnala "hai un link che utilizza la tua
+ * frase chiave come testo di ancoraggio" perché un link del genere dice
+ * a Google che l'altra pagina compete per la stessa frase chiave.
+ * Caso reale del test: #1546, anchor "Campo Imperatore" = frase chiave
+ * della pagina stessa (riga autoreferenziale).
  */
 
 function mwt_link_test_items() {
@@ -421,6 +430,33 @@ function mwt_link_test_find( $content, $phrase ) {
 	return false;
 }
 
+/*
+ * Normalizzazione per il confronto anchor/frase chiave: minuscole,
+ * punteggiatura e simboli → spazi, spazi multipli accorpati.
+ */
+function mwt_link_test_norm_phrase( $s ) {
+	$s = mb_strtolower( (string) $s, 'UTF-8' );
+	$s = preg_replace( '/[\pP\pS]+/u', ' ', (string) $s );
+	return trim( (string) preg_replace( '/\s+/u', ' ', (string) $s ) );
+}
+
+/*
+ * Controllo "link concorrenti" di Yoast: vero se la frase chiave del post
+ * compare integralmente nell'anchor del nuovo link (confini di parola).
+ * Yoast free: solo _yoast_wpseo_focuskw, niente sinonimi (Premium).
+ */
+function mwt_link_test_competing( $post_id, $phrase ) {
+	$kw = mwt_link_test_norm_phrase( get_post_meta( $post_id, '_yoast_wpseo_focuskw', true ) );
+	if ( '' === $kw ) {
+		return false; // nessuna frase chiave impostata su questo post
+	}
+	$an = mwt_link_test_norm_phrase( $phrase );
+	if ( '' === $an ) {
+		return false;
+	}
+	return false !== mb_strpos( ' ' . $an . ' ', ' ' . $kw . ' ', 0, 'UTF-8' );
+}
+
 function mwt_link_test_run() {
 	if ( ! isset( $_GET['mwt_link_test'] ) ) {
 		return;
@@ -428,9 +464,11 @@ function mwt_link_test_run() {
 	if ( ! current_user_can( 'manage_options' ) ) {
 		wp_die( 'Solo gli amministratori possono usare questo strumento.' );
 	}
-	$go = isset( $_GET['go'] ) && '1' === $_GET['go'];
+	$go   = isset( $_GET['go'] ) && '1' === $_GET['go'];
+	$undo = isset( $_GET['undo'] ) && '1' === $_GET['undo'];
 	header( 'Content-Type: text/plain; charset=utf-8' );
-	echo '== Test link interni contestuali (10 righe) — ' . ( $go ? 'APPLICA' : 'DRY-RUN (nessuna scrittura)' ) . " ==\n\n";
+	$mode = $undo ? 'UNDO (rimuove i link applicati)' : ( $go ? 'APPLICA' : 'DRY-RUN (nessuna scrittura)' );
+	echo "== Test link interni contestuali (10 righe) — {$mode} ==\n\n";
 	global $wpdb;
 	$done = 0;
 	foreach ( mwt_link_test_items() as $item ) {
@@ -440,6 +478,34 @@ function mwt_link_test_run() {
 		$post   = get_post( $id );
 		if ( ! $post || 'publish' !== $post->post_status ) {
 			echo "[{$id}] SKIP: post non trovato o non pubblicato\n";
+			continue;
+		}
+		// Modo undo: rimuove solo le coppie esatte href+anchor applicate dallo
+		// snippet, ripristinando il testo originale (nessuna revisione).
+		if ( $undo ) {
+			$pattern = '#<a href="' . preg_quote( $href, '#' ) . '">(' . preg_quote( $phrase, '#' ) . ')</a>#ui';
+			$new = preg_replace( $pattern, '$1', $post->post_content );
+			if ( null === $new || $new === $post->post_content ) {
+				echo "[{$id}] niente da rimuovere (link non presente)\n";
+				continue;
+			}
+			$ok = $wpdb->update( $wpdb->posts, array( 'post_content' => $new ), array( 'ID' => $id ) );
+			if ( false === $ok ) {
+				echo "[{$id}] ERRORE: update wpdb fallito\n";
+				continue;
+			}
+			if ( function_exists( 'w3tc_flush_post' ) ) {
+				w3tc_flush_post( $id );
+			}
+			$done++;
+			echo "[{$id}] RIMOSSO: link \"{$phrase}\" → {$href}\n";
+			continue;
+		}
+		// Controllo "link concorrenti" Yoast: l'anchor della riga non deve
+		// contenere la frase chiave del post, altrimenti Yoast lo segnala.
+		$kw_raw = (string) get_post_meta( $id, '_yoast_wpseo_focuskw', true );
+		if ( '' !== $kw_raw && mwt_link_test_competing( $id, $phrase ) ) {
+			echo "[{$id}] SKIP: link concorrente Yoast — l'anchor \"{$phrase}\" contiene la frase chiave del post (\"{$kw_raw}\"). Per rimuovere un link gia' applicato: ?mwt_link_test=1&undo=1\n";
 			continue;
 		}
 		if ( false !== strpos( $post->post_content, $href ) ) {
@@ -472,9 +538,13 @@ function mwt_link_test_run() {
 			echo "[{$id}] applicherebbe: \"{$raw}\" → {$href}\n    contesto: …{$ctx}…\n";
 		}
 	}
-	echo $go
-		? "\nCompletato: {$done}/10 link inseriti."
-		: "\nDry-run completato. Per applicare, riapri con ?mwt_link_test=1&go=1";
+	if ( $undo ) {
+		echo "\nUndo completato: {$done}/10 link rimossi. Riesegui ?mwt_link_test=1 (dry-run) e poi ?mwt_link_test=1&go=1 per riapplicare solo le righe valide.";
+	} elseif ( $go ) {
+		echo "\nCompletato: {$done}/10 link inseriti.";
+	} else {
+		echo "\nDry-run completato. Per applicare, riapri con ?mwt_link_test=1&go=1";
+	}
 	exit;
 }
 add_action( 'admin_init', 'mwt_link_test_run' );
