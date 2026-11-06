@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.2' ); // v2.2: snippet una-tantum mwt_link_test (test 10 link interni contestuali)
+define( 'MWT_VERSION', '2.2.1' ); // v2.2: snippet una-tantum mwt_link_test (test 10 link interni contestuali); v2.2.1: salta le occorrenze dentro i commenti HTML
 
 /* ============ Setup ============ */
 
@@ -338,7 +338,7 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *    <?xml-stylesheet?> nel sorgente. SEO invariato: i crawler leggono l'XML.
  */
 
-/* ============ Snippet una-tantum: test link interni contestuali (v2.2) ============ */
+/* ============ Snippet una-tantum: test link interni contestuali (v2.2 / v2.2.1) ============ */
 
 /*
  * TEST del 6/11: inserisce 10 link interni contestuali (prime 10 righe del
@@ -350,7 +350,7 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *
  * Per ogni riga cerca nel post la PRIMA occorrenza libera della frase
  * (case-insensitive, confini di parola, non dentro <a> esistenti, non
- * dentro tag HTML o shortcode) e la avvolge in
+ * dentro tag HTML, shortcode o commenti HTML <!-- ... -->) e la avvolge in
  * <a href="https://www.meteo-webcam.it/{slug}/">…</a> preservando
  * maiuscole/accenti originali. Update via $wpdb senza revisioni;
  * flush W3TC per ogni post toccato. Idempotente: se il link è già
@@ -402,9 +402,16 @@ function mwt_link_test_find( $content, $phrase ) {
 		$t2 = mb_strrpos( $tail, '>', 0, 'UTF-8' );
 		$s1 = mb_strrpos( $tail, '[', 0, 'UTF-8' );
 		$s2 = mb_strrpos( $tail, ']', 0, 'UTF-8' );
+		// Non dentro un commento HTML: i blocchi legacy <!-- ... --> prima dello
+		// shortcode (vecchie caption/img commentate) non sono visibili in pagina.
+		// Sul prefisso intero, non sul tail: un commento puo' essere lungo.
+		$head = mb_substr( $content, 0, $pos, 'UTF-8' );
+		$c1 = mb_strrpos( $head, '<!--', 0, 'UTF-8' );
+		$c2 = mb_strrpos( $head, '-->', 0, 'UTF-8' );
 		$bad = ( false !== $la && ( false === $lb || $la > $lb ) )
 			|| ( false !== $t1 && ( false === $t2 || $t1 > $t2 ) )
-			|| ( false !== $s1 && ( false === $s2 || $s1 > $s2 ) );
+			|| ( false !== $s1 && ( false === $s2 || $s1 > $s2 ) )
+			|| ( false !== $c1 && ( false === $c2 || $c1 > $c2 ) );
 		if ( $bad ) {
 			$off = $pos + 1;
 			continue;

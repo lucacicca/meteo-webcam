@@ -1,3 +1,10 @@
+## Tema Meteo Webcam — functions.php v2.2.1 (6 novembre 2026) — mwt_link_test: salta le occorrenze dentro i commenti HTML
+
+- Bug emerso nel dry-run del test delle 10 righe (Luca, 6/11): nel post #1546 (Gran Sasso - Rifugio Le Fontari a Campo Imperatore) la prima occorrenza "libera" di "Campo Imperatore" trovata dallo snippet era dentro un blocco legacy commentato (`<!-- [caption]…[/caption] + <a><img></a> -->`) piazzato prima dello shortcode [mwp_webcam]: non visibile in pagina. Il link sarebbe finito dentro il commento HTML senza alcun effetto sul frontend (e la menzione buona in prosa, "L'Hotel Campo Imperatore", sarebbe restata non linkata).
+- Fix: `mwt_link_test_find` salta anche le occorrenze dentro commenti HTML (`<!--` aperto senza `-->`), verificate sul prefisso intero del contenuto e non sul tail di 500 caratteri (un commento può essere lungo). Le altre 9 righe del test ricontrollate sul dump: tutte corrette (prima menzione in prosa visibile).
+- `MWT_VERSION` bumpata a 2.2.1. Snippet una-tantum invariato nel resto (da rimuovere a test/rollout completato = versione pulita v2.3).
+- Deploy: FTP del solo functions.php; nuovo dry-run `?mwt_link_test=1` (la riga #1546 ora punta a "L'Hotel Campo Imperatore"), poi `&go=1`.
+
 ## Tema Meteo Webcam — functions.php v2.2 (6 novembre 2026) — snippet una-tantum: test link interni contestuali
 
 - Test del 6/11 sulle prime 10 righe del report "Link interni contestuali: 796 suggerimenti" (audit interno, vedi docs/notes.md 6/11 (6)): inserimento di 10 anchor contestuali nel testo dei post, NON nella sezione correlate.
