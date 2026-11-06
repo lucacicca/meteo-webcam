@@ -4,7 +4,21 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.42
+ * Version: 3.43
+ * Changelog 3.43 (webcam_slug e webcam_name nel dataLayer di base, per GTM4WP):
+ *   - Il filtro 'gtm4wp_compile_datalayer' (API pubblica di GTM4WP,
+ *     invariata dalla rewrite 2.x, che compila il dataLayer in <head>
+ *     PRIMA del container) aggiunge al dataLayer di base webcam_slug e
+ *     webcam_name della webcam "principale" del contenuto: il primo
+ *     shortcode [mwp_webcam] del post/pagina corrente (con piu' webcam
+ *     vince la prima). Cosi' slug e nome sono disponibili come Data
+ *     Layer Variables in GTM su ogni pagina con una webcam — arricchire
+ *     il page_view, content grouping, qualsiasi tag — non solo dentro
+ *     l'evento webcam_offline. Senza shortcode nel contenuto le chiavi
+ *     non vengono emesse; se GTM4WP non e' attivo il filtro non gira
+ *     mai (zero impatto). Nota GTM4WP 2.1.x: il fix JSON_NUMERIC_CHECK
+ *     garantisce che i valori stringa aggiunti col filtro restino
+ *     stringhe (slug tutto-numerici compresi).
  * Changelog 3.42 (evento webcam_offline via GTM dataLayer):
  *   - Rivede la logica GA della v3.41 (MAI deployata in produzione):
  *     niente piu' Measurement Protocol server-side. La rilevazione resta
@@ -474,6 +488,36 @@ function mwp_ga_datalayer_offline($cam) {
         . "webcam_name:'" . esc_js((string) ($cam['name'] ?? $slug)) . "',"
         . "failure_count:" . (int) $count . "});</script>";
 }
+
+/* ============================================================
+ * v3.43: webcam_slug / webcam_name nel dataLayer di base (GTM4WP).
+ * GTM4WP compila il dataLayer in <head> prima del container e lo
+ * espone col filtro 'gtm4wp_compile_datalayer' (API pubblica
+ * invariata dalla rewrite 2.x). Qui aggiungiamo la webcam
+ * "principale" del contenuto: il primo shortcode [mwp_webcam]
+ * del post corrente. Su pagine senza webcam le chiavi non
+ * vengono emesse; senza GTM4WP il filtro non gira mai.
+ * ============================================================ */
+add_filter('gtm4wp_compile_datalayer', function ($datalayer) {
+    if (!is_array($datalayer) || !is_singular()) {
+        return $datalayer;
+    }
+    $post = get_post();
+    if (!$post || strpos($post->post_content, 'mwp_webcam') === false) {
+        return $datalayer;
+    }
+    if (!preg_match('/\[mwp_webcam[^\]]*slug=["\']([^"\']+)["\']/i', $post->post_content, $m)) {
+        return $datalayer;
+    }
+    $slug = sanitize_key($m[1]);
+    if ($slug === '') {
+        return $datalayer;
+    }
+    $cam = mwp_get_webcam($slug);
+    $datalayer['webcam_slug'] = $slug;
+    $datalayer['webcam_name'] = (string) ($cam['name'] ?? $slug);
+    return $datalayer;
+});
 
 /**
  * Scarica l'immagine remota aggirando i blocchi anti-hotlink più comuni.
@@ -2262,4 +2306,5 @@ function mwp_admin_page() {
     </script>
     <?php
 }
+
 

@@ -121,4 +121,15 @@
 - **Caveat page cache (W3TC)**: l'HTML col push viene cachato → l'evento continua a sparare a ogni visualizzazione finché la webcam non torna e la pagina viene rigenerata. Se dovesse dare fastidio nei numeri, rimedi lato GTM (frequency capping del tag) o accorciando la TTL della page cache.
 - **NOTA deploy**: FTP del solo plugin in wp-content/plugins/ (niente config admin); verifica: aprire in preview GTM una pagina con una webcam già morta e vedere il `webcam_offline` tra gli eventi, oppure il pannello Data Layer di GTM Preview.
 
+## 6 novembre 2026 (3) — Plugin v3.43: webcam_slug/webcam_name nel dataLayer di base (GTM4WP)
+
+- Luca pubblica la v3.42 (trigger webcam_offline + parametri come event parameters in GTM) e chiede: webcam_slug e webcam_name anche nel dataLayer **di base** di tutte le pagine, compatibile con GTM4WP 2.1.1.
+- **Verifica compatibilità**: GTM4WP 2.0 è rewrite OO ma mantiene tutti i nomi di filtro/azione (`gtm4wp_compile_datalayer` incluso); la documentazione conferma che il filtro costruisce il dataLayer in `<head>` prima del container; la 2.1 fixa la coercizione JSON_NUMERIC_CHECK che alterava le stringhe aggiunte con quel filtro → 2.1.1 pienamente compatibile.
+- **Implementazione (v3.43)**: `add_filter('gtm4wp_compile_datalayer', ...)` — su pagine singolari cerca il primo shortcode `[mwp_webcam slug="…"]` nel contenuto e aggiunge `webcam_slug` + `webcam_name` (nome dalla config, fallback slug) al dataLayer di base. Più webcam → vince la prima; pagine senza shortcode → chiavi assenti; GTM4WP disattivato → filtro mai eseguito.
+- **In GTM (Luca)**: variabili Data Layer `webcam_slug`/`webcam_name`; per portarle sul page_view, aggiungerle come parametri evento nel tag Google (GA4). Dimensione evento `webcam_slug` già registrata; per `webcam_name` nei report serve una seconda dimensione personalizzata evento.
+- Caveat page cache: il dataLayer è HTML cachato → nome/slug riflettono la config al momento della generazione della pagina.
+- **NOTA deploy**: FTP del solo plugin; verifica in GTM Preview: su un post webcam il primo push (Container Load) mostra webcam_slug/webcam_name; su un post senza webcam le chiavi non ci sono.
+
+
+
 

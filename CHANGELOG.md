@@ -1,3 +1,12 @@
+## v3.43 (6 novembre 2026) — webcam_slug e webcam_name nel dataLayer di base (GTM4WP)
+
+- Richiesta di Luca: le variabili `webcam_slug` e `webcam_name` presenti sul dataLayer di base di tutte le pagine, non solo dentro l'evento `webcam_offline`. Implementato con `add_filter('gtm4wp_compile_datalayer', ...)`: GTM4WP compila il dataLayer in `<head>` prima del container e il filtro è API pubblica invariata dalla rewrite 2.0.
+- Logica: sulle pagine singolari viene cercato il primo shortcode `[mwp_webcam slug="…"]` nel contenuto del post/pagina; la webcam trovata (la "principale"; con più webcam vince la prima) viene aggiunta al dataLayer come `webcam_slug` + `webcam_name` (nome dalla config del plugin, fallback = slug). Pagine senza shortcode (home, archivi) non emettono le chiavi; con GTM4WP disattivato il filtro non gira mai.
+- **Compatibilità GTM4WP 2.1.1 verificata**: nomi di filtro/azione mantenuti nella 2.0; la 2.1 ha fixato la coercizione `JSON_NUMERIC_CHECK` che alterava i valori stringa aggiunti proprio via `gtm4wp_compile_datalayer` (es. slug tutto-numerici trasformati in numero).
+- In GTM: due variabili Data Layer (`webcam_slug`, `webcam_name`) riutilizzabili ovunque; per arricchire il page_view aggiungerle come parametri evento nel tag Google (GA4). `webcam_slug` come dimensione personalizzata evento è già registrata per `webcam_offline` (stessa dimensione, vale per ogni evento che la porta); per `webcam_name` nei report serve una seconda dimensione personalizzata.
+- Nota page cache: il dataLayer di base è parte dell'HTML cachato da W3TC → i valori riflettono la config webcam al momento della generazione della pagina.
+- L'evento `webcam_offline` della v3.42 è invariato (push dedicato per ogni webcam offline, con failure_count).
+
 ## v3.42 (6 novembre 2026) — webcam_offline via dataLayer/GTM al posto del Measurement Protocol
 
 - **Revisione richiesta da Luca prima del deploy** (la v3.41 non è mai stata caricata in produzione): niente più invio server-side via Measurement Protocol. La rilevazione dell'offline resta server-side (fail marker del cron col conteggio dei fallimenti consecutivi, cap tornato a 20 come in v3.40); l'invio diventa client-side, sotto il controllo del tag manager: quando lo shortcode renderizza una webcam con fallimenti consecutivi ≥ soglia (filtro `mwp_ga_offline_threshold`, default 3, ~7 minuti dal guasto), emette `window.dataLayer.push({event:'webcam_offline', webcam_slug:'…', webcam_name:'…', failure_count:N})` — una volta per pagina per webcam (dedup statica). Nuova funzione `mwp_ga_datalayer_offline($cam)`, richiamata dallo shortcode.
@@ -196,4 +205,5 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 ## Note trasversali
 - Bug del salvataggio risolto in v3.13–v3.16: aggiungere webcam oltre la 40ª falliva — il campo credito della webcam "ostuni" conteneva ~32 MB di backslash raddoppiati a ogni salvataggio → POST da 50 MB → opzione serializzata oltre il max_allowed_packet di MySQL → update_option rifiutata in silenzio mentre l'admin mostrava comunque "Salvate N webcam".
 - Revisione CWV della v3.21: i problemi erano fetch remoto sincrono in richiesta, varianti rigenerate dal primo visitatore dopo ogni refresh, `<img>` senza dimensioni (CLS), refresh JS inefficace con srcset, placeholder assente nel frontend.
+
 
