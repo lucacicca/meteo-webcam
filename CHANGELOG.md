@@ -1,3 +1,11 @@
+## Tema Meteo Webcam — functions.php v2.3 (6 novembre 2026) — versione pulita: rimosso lo snippet mwt_link_rollout
+
+- Rollout completato in produzione il 6/11: **756 link interni** su ~370 pagine (750 registrati + 6 del test v2.2.2/v2.2.3, vedi docs/notes.md 6/11 (13)). Lo snippet una-tantum `mwt_link_rollout` della v2.2.4 (764 item nowdoc + helper + pagina admin) viene rimosso da functions.php come previsto.
+- Nessun altro cambiamento funzionale: tutte le funzioni permanenti invariate (filtro XSLT sitemap, VideoObject JSON-LD, filtri cron batch 120 / budget 55s, setup tema, widget, excerpt); diff verificato riga per riga (add_action/add_filter 14=14, parentesi graffe bilanciate).
+- `MWT_VERSION` bumpata a 2.3 (cache-bust del CSS invariato). Nuova nota di deploy 8 nel blocco "Note per la messa in produzione".
+- Il registro dei link applicati resta nell'opzione DB `mwt_link_rollout_applied` (l'undo via URL non esiste più in v2.3): per un eventuale undo ricaricare temporaneamente la v2.2.4 e usare `?mwt_link_rollout=1&undo=1` (globale o per lotto), poi ri-caricare la v2.3. Quando il lavoro è chiuso, l'opzione si può eliminare da wp_options.
+- Deploy: FTP del solo functions.php in wp-content/themes/meteo-webcam/ + flush page cache W3TC.
+
 ## Tema Meteo Webcam — functions.php v2.2.4 (6 novembre 2026) — ROLLOUT link interni a lotti: snippet mwt_link_rollout (764 righe)
 
 - Sostituisce lo snippet di test `mwt_link_test` (v2.2.x) con il rollout completo del report "Link interni contestuali: 796 suggerimenti": 764 righe = 751 OK + 13 con anchor alternativo (incluse le 4 del test v2.2.3); escluse le 32 righe concorrenti senza alternativa (le salterebbe comunque il check Yoast a runtime).
