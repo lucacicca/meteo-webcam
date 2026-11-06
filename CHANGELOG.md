@@ -1,3 +1,11 @@
+## v3.44 (6 novembre 2026) — dataLayer di base: TUTTE le webcam della pagina
+
+- Richiesta di Luca: tracciare tutte le webcam quando una pagina ne contiene più di una. Estende il filtro `gtm4wp_compile_datalayer` della v3.43: raccoglie **tutti** gli shortcode `[mwp_webcam]` del contenuto (slug deduplicati, in ordine di contenuto).
+- Schema del dataLayer di base su ogni pagina con webcam: `webcam_slug` + `webcam_name` = webcam "principale" (la prima; retrocompatibili con le variabili GTM già configurate) e `webcam_slugs` + `webcam_names` = lista completa separata da virgole (es. `webcam_slugs: "riale,moena,pitigliano"`). Le liste sono stringhe, non array, perché GA4 accetta parametri stringa; anche con una sola webcam le chiavi sono emesse (lista di un elemento) → schema costante.
+- In GTM: nuove variabili Data Layer `webcam_slugs` / `webcam_names`; per i report registrare `webcam_slugs` come dimensione personalizzata evento se si vuole la lista lato GA4 (attenzione: la dimensione ha un limite di ~100 caratteri, liste lunghissime vengono troncate da GA4). L'evento `webcam_offline` è invariato: spara comunque un push per ogni webcam offline, quindi le singole offline si vedono sempre una per una.
+- Per l'analisi per-singola-webcam resta consigliato `webcam_slug`/l'evento `webcam_offline`; le liste servono per il contesto della pagina (page_view, content grouping).
+- Nota page cache invariata: i valori riflettono la config webcam al momento della generazione dell'HTML (W3TC).
+
 ## v3.43 (6 novembre 2026) — webcam_slug e webcam_name nel dataLayer di base (GTM4WP)
 
 - Richiesta di Luca: le variabili `webcam_slug` e `webcam_name` presenti sul dataLayer di base di tutte le pagine, non solo dentro l'evento `webcam_offline`. Implementato con `add_filter('gtm4wp_compile_datalayer', ...)`: GTM4WP compila il dataLayer in `<head>` prima del container e il filtro è API pubblica invariata dalla rewrite 2.0.
@@ -205,5 +213,6 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 ## Note trasversali
 - Bug del salvataggio risolto in v3.13–v3.16: aggiungere webcam oltre la 40ª falliva — il campo credito della webcam "ostuni" conteneva ~32 MB di backslash raddoppiati a ogni salvataggio → POST da 50 MB → opzione serializzata oltre il max_allowed_packet di MySQL → update_option rifiutata in silenzio mentre l'admin mostrava comunque "Salvate N webcam".
 - Revisione CWV della v3.21: i problemi erano fetch remoto sincrono in richiesta, varianti rigenerate dal primo visitatore dopo ogni refresh, `<img>` senza dimensioni (CLS), refresh JS inefficace con srcset, placeholder assente nel frontend.
+
 
 

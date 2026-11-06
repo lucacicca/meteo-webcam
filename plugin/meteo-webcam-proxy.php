@@ -4,7 +4,19 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.43
+ * Version: 3.44
+ * Changelog 3.44 (dataLayer di base: TUTTE le webcam della pagina):
+ *   - Estende il filtro gtm4wp_compile_datalayer della v3.43: quando un
+ *     contenuto ha piu' webcam, ora vengono tracciate tutte (richiesta di
+ *     Luca). webcam_slug e webcam_name restano la webcam "principale"
+ *     (la prima: retrocompatibili con quanto gia' configurato in GTM);
+ *     in piu' il dataLayer porta webcam_slugs e webcam_names con la
+ *     lista completa in ordine di contenuto, valori separati da virgole
+ *     (GA4 accetta parametri stringa, non array). Le chiavi sono emesse
+ *     anche con una webcam sola (lista di un elemento): schema costante
+ *     su tutte le pagine con webcam. Slug deduplicati; nome dalla
+ *     config del plugin, fallback = slug. L'evento webcam_offline
+ *     spara comunque un push per ogni webcam offline (invariato).
  * Changelog 3.43 (webcam_slug e webcam_name nel dataLayer di base, per GTM4WP):
  *   - Il filtro 'gtm4wp_compile_datalayer' (API pubblica di GTM4WP,
  *     invariata dalla rewrite 2.x, che compila il dataLayer in <head>
@@ -490,13 +502,16 @@ function mwp_ga_datalayer_offline($cam) {
 }
 
 /* ============================================================
- * v3.43: webcam_slug / webcam_name nel dataLayer di base (GTM4WP).
- * GTM4WP compila il dataLayer in <head> prima del container e lo
- * espone col filtro 'gtm4wp_compile_datalayer' (API pubblica
- * invariata dalla rewrite 2.x). Qui aggiungiamo la webcam
- * "principale" del contenuto: il primo shortcode [mwp_webcam]
- * del post corrente. Su pagine senza webcam le chiavi non
- * vengono emesse; senza GTM4WP il filtro non gira mai.
+ * v3.43/v3.44: webcam_slug / webcam_name / webcam_slugs /
+ * webcam_names nel dataLayer di base (GTM4WP). GTM4WP compila il
+ * dataLayer in <head> prima del container e lo espone col filtro
+ * 'gtm4wp_compile_datalayer' (API pubblica invariata dalla
+ * rewrite 2.x). v3.44: TUTTE le webcam del contenuto, non solo la
+ * prima — webcam_slug/webcam_name restano la webcam "principale"
+ * (retrocompatibili), webcam_slugs/webcam_names portano la lista
+ * completa separata da virgole (GA4 vuole parametri stringa, non
+ * array). Su pagine senza webcam le chiavi non vengono emesse;
+ * senza GTM4WP il filtro non gira mai.
  * ============================================================ */
 add_filter('gtm4wp_compile_datalayer', function ($datalayer) {
     if (!is_array($datalayer) || !is_singular()) {
@@ -506,16 +521,32 @@ add_filter('gtm4wp_compile_datalayer', function ($datalayer) {
     if (!$post || strpos($post->post_content, 'mwp_webcam') === false) {
         return $datalayer;
     }
-    if (!preg_match('/\[mwp_webcam[^\]]*slug=["\']([^"\']+)["\']/i', $post->post_content, $m)) {
+    if (!preg_match_all('/\[mwp_webcam[^\]]*slug=["\']([^"\']+)["\']/i', $post->post_content, $m)) {
         return $datalayer;
     }
-    $slug = sanitize_key($m[1]);
-    if ($slug === '') {
+    // v3.44: tutti gli slug del contenuto, deduplicati, in ordine
+    $slugs = [];
+    foreach ($m[1] as $raw) {
+        $slug = sanitize_key($raw);
+        if ($slug !== '' && !in_array($slug, $slugs, true)) {
+            $slugs[] = $slug;
+        }
+    }
+    if (!$slugs) {
         return $datalayer;
     }
-    $cam = mwp_get_webcam($slug);
-    $datalayer['webcam_slug'] = $slug;
-    $datalayer['webcam_name'] = (string) ($cam['name'] ?? $slug);
+    $names = [];
+    foreach ($slugs as $slug) {
+        $cam = mwp_get_webcam($slug);
+        $names[] = (string) ($cam['name'] ?? $slug);
+    }
+    // v3.43: webcam "principale" (la prima), retrocompatibile
+    $datalayer['webcam_slug'] = $slugs[0];
+    $datalayer['webcam_name'] = $names[0];
+    // v3.44: lista completa (separata da virgole: GA4 accetta
+    // parametri stringa, non array)
+    $datalayer['webcam_slugs'] = implode(',', $slugs);
+    $datalayer['webcam_names'] = implode(',', $names);
     return $datalayer;
 });
 
@@ -2306,5 +2337,6 @@ function mwp_admin_page() {
     </script>
     <?php
 }
+
 
 
