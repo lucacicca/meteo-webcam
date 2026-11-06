@@ -1,3 +1,11 @@
+## v3.42 (6 novembre 2026) — webcam_offline via dataLayer/GTM al posto del Measurement Protocol
+
+- **Revisione richiesta da Luca prima del deploy** (la v3.41 non è mai stata caricata in produzione): niente più invio server-side via Measurement Protocol. La rilevazione dell'offline resta server-side (fail marker del cron col conteggio dei fallimenti consecutivi, cap tornato a 20 come in v3.40); l'invio diventa client-side, sotto il controllo del tag manager: quando lo shortcode renderizza una webcam con fallimenti consecutivi ≥ soglia (filtro `mwp_ga_offline_threshold`, default 3, ~7 minuti dal guasto), emette `window.dataLayer.push({event:'webcam_offline', webcam_slug:'…', webcam_name:'…', failure_count:N})` — una volta per pagina per webcam (dedup statica). Nuova funzione `mwp_ga_datalayer_offline($cam)`, richiamata dallo shortcode.
+- **Setup GTM** (a cura di Luca): trigger di evento personalizzato `webcam_offline` → tag evento GA4 con i parametri; registrare `webcam_slug` come dimensione personalizzata evento in GA4 per vedere quale webcam nei report.
+- **Rimossi** rispetto alla v3.41: sezione admin "Notifiche webcam offline su Google Analytics" (Measurement ID + API secret + pulsante test), handler `admin_post_mwp_save_ga` / `wp_ajax_mwp_ga_test`, helper Measurement Protocol (`mwp_ga_cfg`/`mwp_ga_client_id`/`mwp_ga_track`/`mwp_ga_maybe_alert_offline`), opzioni `mwp_ga_*` (mai usate in produzione), evento `webcam_online` e promemoria giornaliero.
+- **Nota page cache**: l'HTML col push viene servito cachato da W3TC → l'evento continua a sparare a ogni visualizzazione finché la webcam non torna e la pagina viene rigenerata con l'immagine buona.
+- L'immagine di cortesia e il recupero della nota v3.40 introdotti in v3.41 restano invariati.
+
 ## v3.41 (6 novembre 2026) — evento GA4 webcam_offline via Measurement Protocol + immagine di cortesia
 
 - **Notifiche GA4 server-side (nessun tag GTM)**: al 3° fallimento consecutivo di fetch (filtro `mwp_ga_offline_threshold`, ~7 minuti dal guasto) il cron invia l'evento GA4 `webcam_offline` via Measurement Protocol con parametri `webcam_slug`, `webcam_name`, `failure_count`; quando la webcam torna online invia `webcam_online`; le webcam ancora morte mandano un promemoria al giorno (il fail marker ora conta fino a 1000 invece di 20, il backoff resta capped a 24h: oltre il count 12 ogni nuovo marker è un giorno di morte in più).
@@ -188,3 +196,4 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 ## Note trasversali
 - Bug del salvataggio risolto in v3.13–v3.16: aggiungere webcam oltre la 40ª falliva — il campo credito della webcam "ostuni" conteneva ~32 MB di backslash raddoppiati a ogni salvataggio → POST da 50 MB → opzione serializzata oltre il max_allowed_packet di MySQL → update_option rifiutata in silenzio mentre l'admin mostrava comunque "Salvate N webcam".
 - Revisione CWV della v3.21: i problemi erano fetch remoto sincrono in richiesta, varianti rigenerate dal primo visitatore dopo ogni refresh, `<img>` senza dimensioni (CLS), refresh JS inefficace con srcset, placeholder assente nel frontend.
+

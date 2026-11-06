@@ -4,7 +4,24 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.41
+ * Version: 3.42
+ * Changelog 3.42 (evento webcam_offline via GTM dataLayer):
+ *   - Rivede la logica GA della v3.41 (MAI deployata in produzione):
+ *     niente piu' Measurement Protocol server-side. La rilevazione resta
+ *     server-side (fail marker del cron col conteggio dei fallimenti
+ *     consecutivi, cap tornato a 20 come in v3.40), l'invio e' client-side:
+ *     lo shortcode, quando renderizza una webcam con fallimenti
+ *     consecutivi >= soglia (filtro 'mwp_ga_offline_threshold', default 3,
+ *     ~7 minuti dal guasto), emette window.dataLayer.push({event:
+ *     'webcam_offline', webcam_slug, webcam_name, failure_count}) una volta
+ *     per pagina per webcam. In GTM: trigger di evento personalizzato
+ *     'webcam_offline' collegato al tag evento GA4; registrare webcam_slug
+ *     come dimensione personalizzata evento in GA4. Rimossi: sezione admin
+ *     GA (Measurement ID + API secret + pulsante test), helper del
+ *     Measurement Protocol, evento webcam_online e promemoria giornaliero.
+ *     NOTA page cache: l'HTML col push viene servito cachato finche' la
+ *     webcam non torna e la pagina viene rigenerata (nel frattempo
+ *     l'evento continua a sparare a ogni visualizzazione).
  * Changelog 3.41 (evento GA4 webcam_offline + immagine di cortesia):
  *   - NOTIFICHE GA4 (Measurement Protocol, server-side, nessun GTM):
  *     quando una webcam accumula N fallimenti consecutivi (filtro
@@ -365,29 +382,15 @@ function mwp_mark_fail($slug) {
     if ($count <= 0) {
         $count = 0; // marker pre-3.34 senza numero: parti da 1
     }
-    // v3.41: il conteggio cresce anche oltre il vecchio cap di 20 (il backoff
-    // resta capped: oltre il count 12 l'attesa e' gia' 24h), cosi' le webcam
-    // ancora morte possono mandare un promemoria GA4 al giorno
-    $new = min($count + 1, 1000);
+    $new = min($count + 1, 20);
     @file_put_contents($f, (string) $new);
     @touch($f);
-    mwp_ga_maybe_alert_offline($slug, $new);
 }
 
 function mwp_clear_fail($slug) {
     $f = mwp_fail_marker_path($slug);
     if (!is_file($f)) {
         return;
-    }
-    // v3.41: se la webcam era ufficialmente offline (soglia GA superata),
-    // avvisa che e' tornata online
-    $prev = max(0, (int) @file_get_contents($f));
-    if (mwp_ga_cfg() && $prev >= mwp_ga_offline_threshold()) {
-        $cam = mwp_get_webcam($slug);
-        mwp_ga_track('webcam_online', [
-            'webcam_slug' => $slug,
-            'webcam_name' => $cam['name'] ?? $slug,
-        ]);
     }
     @unlink($f);
 }
@@ -436,97 +439,40 @@ function mwp_serve_courtesy() {
     exit;
 }
 
-/** Config GA4 Measurement Protocol: servono entrambi i valori, o niente eventi. */
-function mwp_ga_cfg() {
-    $mid = trim((string) get_option('mwp_ga_measurement_id', ''));
-    $secret = trim((string) get_option('mwp_ga_api_secret', ''));
-    if ($mid === '' || $secret === '' || !preg_match('/^G-[A-Za-z0-9_\-]+$/', $mid)) {
-        return null;
-    }
-    return ['measurement_id' => $mid, 'api_secret' => $secret];
-}
-
-/** client_id stabile per gli eventi server-side (un solo "visitatore": il sito). */
-function mwp_ga_client_id() {
-    $cid = (string) get_option('mwp_ga_client_id', '');
-    if ($cid === '' || !preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $cid)) {
-        $cid = function_exists('wp_generate_uuid4') ? wp_generate_uuid4() : md5(site_url() . microtime());
-        update_option('mwp_ga_client_id', $cid, false);
-    }
-    return $cid;
-}
-
-/**
- * Invio server-side di un evento GA4 via Measurement Protocol.
- * $debug = true usa l'endpoint /debug/mp/collect, che RISPONDE con gli
- * errori di validazione (l'endpoint normale risponde 204 anche con API
- * secret sbagliato, silenzioso): serve al pulsante di test in admin.
- * Ritorna ['ok' => bool, 'msg' => string].
- */
-function mwp_ga_track($name, $params, $debug = false) {
-    $cfg = mwp_ga_cfg();
-    if (!$cfg) {
-        return ['ok' => false, 'msg' => 'GA non configurato: servono Measurement ID e API secret.'];
-    }
-    $endpoint = $debug
-        ? 'https://www.google-analytics.com/debug/mp/collect'
-        : 'https://www.google-analytics.com/mp/collect';
-    $res = wp_remote_post(
-        $endpoint . '?measurement_id=' . rawurlencode($cfg['measurement_id'])
-            . '&api_secret=' . rawurlencode($cfg['api_secret']),
-        [
-            'timeout' => 3,
-            'headers' => ['Content-Type' => 'application/json'],
-            'body' => wp_json_encode([
-                'client_id' => mwp_ga_client_id(),
-                'events' => [
-                    ['name' => $name, 'params' => $params],
-                ],
-            ]),
-        ]
-    );
-    if (is_wp_error($res)) {
-        return ['ok' => false, 'msg' => $res->get_error_message()];
-    }
-    $code = (int) wp_remote_retrieve_response_code($res);
-    $body = (string) wp_remote_retrieve_body($res);
-    if ($debug) {
-        $j = json_decode($body, true);
-        $msgs = is_array($j) ? ($j['validationMessages'] ?? []) : [];
-        if ($code >= 200 && $code < 300 && empty($msgs)) {
-            return ['ok' => true, 'msg' => 'Payload valido (debug endpoint GA)'];
-        }
-        return ['ok' => false, 'msg' => $msgs ? wp_json_encode($msgs) : ('HTTP ' . $code)];
-    }
-    return ['ok' => $code >= 200 && $code < 300, 'msg' => ''];
-}
-
 /** Soglia di fallimenti consecutivi che accende l'evento webcam_offline. */
 function mwp_ga_offline_threshold() {
     return max(1, (int) apply_filters('mwp_ga_offline_threshold', 3));
 }
 
 /**
- * Chiamato da mwp_mark_fail a ogni fallimento registrato: invia l'evento
- * webcam_offline al raggiungimento della soglia (es. 3° fail consecutivo,
- * ~7 minuti dal guasto) e poi, per le webcam ancora morte, un promemoria
- * al giorno (dal count 13 in poi: oltre il 12 il backoff e' di 24h, quindi
- * ogni nuovo fail marker e' un giorno di morte in piu').
+ * v3.42: evento webcam_offline lato client, via dataLayer (GTM). La
+ * rilevazione resta server-side (fail marker del cron col conteggio dei
+ * fallimenti consecutivi), l'invio no: quando lo shortcode renderizza una
+ * webcam con fallimenti consecutivi >= soglia (default 3, ~7 minuti dal
+ * guasto), emette un window.dataLayer.push({event:'webcam_offline', ...})
+ * che un trigger GTM di evento personalizzato 'webcam_offline' passa al
+ * tag evento GA4. Una sola volta per pagina per webcam (dedup statica).
+ * NOTA page cache: l'HTML col push viene cachato da W3TC, quindi l'evento
+ * continua a sparare a ogni visualizzazione finche' la webcam non torna e
+ * la pagina viene rigenerata con l'immagine buona.
  */
-function mwp_ga_maybe_alert_offline($slug, $count) {
-    if (!mwp_ga_cfg()) {
-        return;
+function mwp_ga_datalayer_offline($cam) {
+    static $sent = [];
+    $slug = (string) ($cam['slug'] ?? '');
+    if ($slug === '' || isset($sent[$slug])) {
+        return '';
     }
-    $threshold = mwp_ga_offline_threshold();
-    if ($count !== $threshold && $count < 13) {
-        return;
+    $f = mwp_fail_marker_path($slug);
+    $count = is_file($f) ? max(1, (int) @file_get_contents($f)) : 0;
+    if ($count < mwp_ga_offline_threshold()) {
+        return '';
     }
-    $cam = mwp_get_webcam($slug);
-    mwp_ga_track('webcam_offline', [
-        'webcam_slug'   => $slug,
-        'webcam_name'   => $cam['name'] ?? $slug,
-        'failure_count' => $count,
-    ]);
+    $sent[$slug] = true;
+    return "<script>window.dataLayer=window.dataLayer||[];window.dataLayer.push("
+        . "{event:'webcam_offline',"
+        . "webcam_slug:'" . esc_js($slug) . "',"
+        . "webcam_name:'" . esc_js((string) ($cam['name'] ?? $slug)) . "',"
+        . "failure_count:" . (int) $count . "});</script>";
 }
 
 /**
@@ -1423,6 +1369,11 @@ add_shortcode('mwp_webcam', function ($atts) {
         $html .= mwp_lightbox_assets();
     }
 
+    // v3.42: webcam ufficialmente offline (fail marker >= soglia): emette
+    // il dataLayer.push che il tag GTM di GA4 trasforma in evento
+    // webcam_offline (una volta per pagina per webcam)
+    $html .= mwp_ga_datalayer_offline($cam);
+
     return $html;
 });
 
@@ -1619,48 +1570,6 @@ add_action('wp_ajax_mwp_test_webcam', function () {
         'width'  => $size[0] ?? null,
         'height' => $size[1] ?? null,
     ]);
-});
-
-/* v3.41: salvataggio delle impostazioni GA4 Measurement Protocol
- * (sezione "Notifiche webcam offline su Google Analytics" in admin). */
-add_action('admin_post_mwp_save_ga', function () {
-    if (!current_user_can('manage_options')) {
-        wp_die('Permessi insufficienti.');
-    }
-    check_admin_referer('mwp_save_ga');
-
-    $mid = trim((string) sanitize_text_field(wp_unslash($_POST['mwp_ga_measurement_id'] ?? '')));
-    $secret = trim((string) sanitize_text_field(wp_unslash($_POST['mwp_ga_api_secret'] ?? '')));
-    $msg = 'Impostazioni Google Analytics salvate.';
-    if ($mid !== '' && !preg_match('/^G-[A-Za-z0-9_\-]+$/', $mid)) {
-        $mid = '';
-        $msg = 'Measurement ID non valido (formato atteso G-XXXXXXXXXX): NON salvato. Gli altri valori sono stati salvati.';
-    }
-    update_option('mwp_ga_measurement_id', $mid, false);
-    update_option('mwp_ga_api_secret', $secret, false);
-    set_transient('mwp_admin_notice_' . get_current_user_id(), $msg, 300);
-    wp_safe_redirect(admin_url('admin.php?page=mwp-webcams&mwp_ga=1'));
-    exit;
-});
-
-/* v3.41: test dell'evento GA4 webcam_offline: usa l'endpoint DEBUG del
- * Measurement Protocol, che risponde con gli errori di validazione (l'endpoint
- * normale fa 204 anche con API secret sbagliato, quindi non verificherebbe
- * nulla). Non tocca i fail marker: e' solo un invio di collaudo. */
-add_action('wp_ajax_mwp_ga_test', function () {
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error('Permessi insufficienti.', 403);
-    }
-    check_ajax_referer('mwp_admin', 'nonce');
-    $res = mwp_ga_track('webcam_offline', [
-        'webcam_slug'   => 'test-manuale',
-        'webcam_name'   => 'Evento di test dal pannello admin',
-        'failure_count' => 3,
-    ], true);
-    if (empty($res['ok'])) {
-        wp_send_json_error('Invio NON riuscito: ' . ($res['msg'] ?: 'errore sconosciuto'));
-    }
-    wp_send_json_success(['msg' => $res['msg']]);
 });
 
 /* ============================================================
@@ -1989,10 +1898,6 @@ function mwp_admin_page() {
     }
     $statusUrl = home_url('/webcam/mwp-status?key=' . rawurlencode($statusKey));
 
-    // v3.41: impostazioni GA4 Measurement Protocol per le notifiche offline
-    $gaMid = trim((string) get_option('mwp_ga_measurement_id', ''));
-    $gaSecret = trim((string) get_option('mwp_ga_api_secret', ''));
-
     // v3.30: ordinamento per data di inserimento decrescente (la webcam più
     // recente in cima, sia nell'elenco sia nelle anteprime). Le webcam
     // create prima della 3.30 non hanno il campo "added" e restano in
@@ -2185,38 +2090,6 @@ function mwp_admin_page() {
             <input type="hidden" name="mwp_canary" value="ok">
         </form>
 
-        <h2>Notifiche webcam offline su Google Analytics (GA4)</h2>
-        <p>
-            Quando una webcam non riesce pi&ugrave; a essere scaricata per
-            <strong>3 volte consecutive</strong> (filtro <code>mwp_ga_offline_threshold</code>),
-            il cron invia l'evento GA4 <code>webcam_offline</code> via Measurement Protocol,
-            direttamente dal server (nessun tag GTM). Quando la webcam torna online invia
-            <code>webcam_online</code>; le webcam ancora morte mandano un promemoria al
-            giorno. Parametri: <code>webcam_slug</code>, <code>webcam_name</code>,
-            <code>failure_count</code> — registra <code>webcam_slug</code> come dimensione
-            personalizzata (evento) in GA4 per vederlo nei report. L'API secret si crea in
-            GA4: Amministrazione &rarr; Flussi dati &rarr; flusso web &rarr; Measurement
-            Protocol. Senza Measurement ID e API secret: nessun evento.
-        </p>
-        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"
-              style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
-            <input type="hidden" name="action" value="mwp_save_ga">
-            <?php wp_nonce_field('mwp_save_ga'); ?>
-            <label style="display:flex;gap:6px;align-items:center">Measurement ID
-                <input type="text" name="mwp_ga_measurement_id" value="<?php echo esc_attr($gaMid); ?>"
-                       placeholder="G-XXXXXXXXXX" style="width:160px;font-family:monospace">
-            </label>
-            <label style="display:flex;gap:6px;align-items:center">API secret
-                <input type="text" name="mwp_ga_api_secret" value="<?php echo esc_attr($gaSecret); ?>"
-                       placeholder="segreto Measurement Protocol" style="width:240px;font-family:monospace" autocomplete="off">
-            </label>
-            <?php submit_button('Salva GA', 'secondary', 'submit', false); ?>
-        </form>
-        <p>
-            <button type="button" class="button" id="mwp-ga-test">Invia evento di test webcam_offline</button>
-            <span id="mwp-ga-test-result" style="margin-left:8px;font-size:12px;color:#50575e"></span>
-        </p>
-
         <h2>Monitoraggio esterno (cron-job.org / uptime)</h2>
         <p>
             URL di stato: risponde <strong>200</strong> con un JSON diagnostico se il
@@ -2385,32 +2258,8 @@ function mwp_admin_page() {
                 span.textContent = '⚠ Errore di rete';
             });
         });
-
-        // v3.41: test dell'evento GA4 webcam_offline (endpoint debug
-        // del Measurement Protocol: risponde con gli errori di validazione)
-        var gaBtn = document.getElementById('mwp-ga-test');
-        if (gaBtn) {
-            gaBtn.addEventListener('click', function () {
-                var span = document.getElementById('mwp-ga-test-result');
-                span.textContent = '…invio in corso…';
-                gaBtn.disabled = true;
-                fetch(mwpAjax.url, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=mwp_ga_test&nonce=' + encodeURIComponent(mwpAjax.nonce)
-                }).then(function (r) { return r.json(); }).then(function (j) {
-                    gaBtn.disabled = false;
-                    span.textContent = (j && j.success)
-                        ? '✓ ' + ((j.data && j.data.msg) ? j.data.msg : 'Evento valido')
-                        : '⚠ ' + ((j && j.data) ? j.data : 'Invio fallito');
-                }).catch(function () {
-                    gaBtn.disabled = false;
-                    span.textContent = '⚠ Errore di rete';
-                });
-            });
-        }
     });
     </script>
     <?php
 }
+
