@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.1' ); // v2.1: rimozione stylesheet XSLT dalle sitemap Yoast (deprecazione XSLT nei browser)
+define( 'MWT_VERSION', '2.2' ); // v2.2: snippet una-tantum mwt_link_test (test 10 link interni contestuali)
 
 /* ============ Setup ============ */
 
@@ -337,3 +337,137 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *    poi riaprire /sitemap_index.xml: niente banner XSLT e nessuna riga
  *    <?xml-stylesheet?> nel sorgente. SEO invariato: i crawler leggono l'XML.
  */
+
+/* ============ Snippet una-tantum: test link interni contestuali (v2.2) ============ */
+
+/*
+ * TEST del 6/11: inserisce 10 link interni contestuali (prime 10 righe del
+ * report "Link interni contestuali: 796 suggerimenti"). SNIPPET TEMPORANEO:
+ * rimuovere dopo il test (prossima versione pulita = v2.3).
+ *
+ * wp-admin → ?mwt_link_test=1            dry-run (nessuna scrittura)
+ * wp-admin → ?mwt_link_test=1&go=1       applica e riporta l'esito
+ *
+ * Per ogni riga cerca nel post la PRIMA occorrenza libera della frase
+ * (case-insensitive, confini di parola, non dentro <a> esistenti, non
+ * dentro tag HTML o shortcode) e la avvolge in
+ * <a href="https://www.meteo-webcam.it/{slug}/">…</a> preservando
+ * maiuscole/accenti originali. Update via $wpdb senza revisioni;
+ * flush W3TC per ogni post toccato. Idempotente: se il link è già
+ * presente nel post, la riga viene saltata.
+ */
+
+function mwt_link_test_items() {
+	return array(
+		// array( post_ID, frase da linkare, slug della pagina target )
+		array( 1546, 'Campo Imperatore', 'lago-di-campotosto' ),
+		array( 2026, 'Costa Concordia', 'isola-del-giglio-porto' ),
+		array( 2235, 'Costa Concordia', 'isola-del-giglio-porto' ),
+		array( 1662, 'Forni di Sopra', 'monte-cridola-da-laggio-di-cadore' ),
+		array( 1875, 'Santa Fiora', 'vetta-monte-amiata' ),
+		array( 2210, 'San Teodoro', 'capo-coda-cavallo-san-teodoro' ),
+		array( 625,  'stazione McMurdo', 'antartide-stazione-mcmurdo-the-observation-hill' ),
+		array( 7846, 'lago di Garda', 'sirmione-panorama-sul-lago-di-garda' ),
+		array( 8338, 'valle Aurina', 'cadipietra-klausberg-ski-arena' ),
+		array( 9443, 'Alpi Apuane', 'canevara-vista-sul-monte-grondilice-e-sul-monte-cavallo' ),
+	);
+}
+
+function mwt_link_test_find( $content, $phrase ) {
+	$len = mb_strlen( $phrase, 'UTF-8' );
+	$off = 0;
+	while ( $off < mb_strlen( $content, 'UTF-8' ) ) {
+		$pos = mb_stripos( $content, $phrase, $off, 'UTF-8' );
+		if ( false === $pos ) {
+			return false;
+		}
+		// Confini di parola: il carattere prima e dopo non devono essere lettere/cifre.
+		if ( $pos > 0 ) {
+			$prev = mb_substr( $content, $pos - 1, 1, 'UTF-8' );
+			if ( preg_match( '/[\pL\pN]/u', $prev ) ) {
+				$off = $pos + 1;
+				continue;
+			}
+		}
+		$next = mb_substr( $content, $pos + $len, 1, 'UTF-8' );
+		if ( '' !== $next && preg_match( '/[\pL\pN]/u', $next ) ) {
+			$off = $pos + 1;
+			continue;
+		}
+		// Non dentro un <a> esistente, non dentro un tag, non dentro uno shortcode.
+		$tail = mb_substr( $content, max( 0, $pos - 500 ), min( 500, $pos ), 'UTF-8' );
+		$la = mb_strrpos( $tail, '<a ', 0, 'UTF-8' );
+		$lb = mb_strrpos( $tail, '</a>', 0, 'UTF-8' );
+		$t1 = mb_strrpos( $tail, '<', 0, 'UTF-8' );
+		$t2 = mb_strrpos( $tail, '>', 0, 'UTF-8' );
+		$s1 = mb_strrpos( $tail, '[', 0, 'UTF-8' );
+		$s2 = mb_strrpos( $tail, ']', 0, 'UTF-8' );
+		$bad = ( false !== $la && ( false === $lb || $la > $lb ) )
+			|| ( false !== $t1 && ( false === $t2 || $t1 > $t2 ) )
+			|| ( false !== $s1 && ( false === $s2 || $s1 > $s2 ) );
+		if ( $bad ) {
+			$off = $pos + 1;
+			continue;
+		}
+		return $pos;
+	}
+	return false;
+}
+
+function mwt_link_test_run() {
+	if ( ! isset( $_GET['mwt_link_test'] ) ) {
+		return;
+	}
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( 'Solo gli amministratori possono usare questo strumento.' );
+	}
+	$go = isset( $_GET['go'] ) && '1' === $_GET['go'];
+	header( 'Content-Type: text/plain; charset=utf-8' );
+	echo '== Test link interni contestuali (10 righe) — ' . ( $go ? 'APPLICA' : 'DRY-RUN (nessuna scrittura)' ) . " ==\n\n";
+	global $wpdb;
+	$done = 0;
+	foreach ( mwt_link_test_items() as $item ) {
+		$id     = (int) $item[0];
+		$phrase = $item[1];
+		$href   = 'https://www.meteo-webcam.it/' . $item[2] . '/';
+		$post   = get_post( $id );
+		if ( ! $post || 'publish' !== $post->post_status ) {
+			echo "[{$id}] SKIP: post non trovato o non pubblicato\n";
+			continue;
+		}
+		if ( false !== strpos( $post->post_content, $href ) ) {
+			echo "[{$id}] SKIP: link a {$href} gia' presente\n";
+			continue;
+		}
+		$pos = mwt_link_test_find( $post->post_content, $phrase );
+		if ( false === $pos ) {
+			echo "[{$id}] NESSUNA occorrenza libera di \"{$phrase}\"\n";
+			continue;
+		}
+		$len = mb_strlen( $phrase, 'UTF-8' );
+		$raw = mb_substr( $post->post_content, $pos, $len, 'UTF-8' );
+		$ctx = str_replace( "\n", ' ', mb_substr( $post->post_content, max( 0, $pos - 35 ), $len + 70, 'UTF-8' ) );
+		if ( $go ) {
+			$new = mb_substr( $post->post_content, 0, $pos, 'UTF-8' )
+				. '<a href="' . $href . '">' . $raw . '</a>'
+				. mb_substr( $post->post_content, $pos + $len, mb_strlen( $post->post_content, 'UTF-8' ), 'UTF-8' );
+			$ok = $wpdb->update( $wpdb->posts, array( 'post_content' => $new ), array( 'ID' => $id ) );
+			if ( false === $ok ) {
+				echo "[{$id}] ERRORE: update wpdb fallito\n";
+				continue;
+			}
+			if ( function_exists( 'w3tc_flush_post' ) ) {
+				w3tc_flush_post( $id );
+			}
+			$done++;
+			echo "[{$id}] INSERITO: \"{$raw}\" → {$href}\n    contesto: …{$ctx}…\n";
+		} else {
+			echo "[{$id}] applicherebbe: \"{$raw}\" → {$href}\n    contesto: …{$ctx}…\n";
+		}
+	}
+	echo $go
+		? "\nCompletato: {$done}/10 link inseriti."
+		: "\nDry-run completato. Per applicare, riapri con ?mwt_link_test=1&go=1";
+	exit;
+}
+add_action( 'admin_init', 'mwt_link_test_run' );

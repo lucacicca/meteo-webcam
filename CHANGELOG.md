@@ -1,3 +1,11 @@
+## Tema Meteo Webcam — functions.php v2.2 (6 novembre 2026) — snippet una-tantum: test link interni contestuali
+
+- Test del 6/11 sulle prime 10 righe del report "Link interni contestuali: 796 suggerimenti" (audit interno, vedi docs/notes.md 6/11 (6)): inserimento di 10 anchor contestuali nel testo dei post, NON nella sezione correlate.
+- Nuovo snippet una-tantum `mwt_link_test` in functions.php: pagina strumento in wp-admin con `?mwt_link_test=1` (dry-run: per ogni post riporta la frase trovata, il contesto e il link previsto) e `&go=1` (applica).
+- Per ogni riga cerca nel post la PRIMA occorrenza libera della frase (case-insensitive, confini di parola, non dentro `<a>` esistenti, non dentro tag HTML o shortcode), la avvolge in `<a href="https://www.meteo-webcam.it/{slug}/">` preservando maiuscole/accenti originali; update via $wpdb senza revisioni; `w3tc_flush_post` per ogni post toccato; idempotente (skip se il link è già presente).
+- Le 10 righe del test: Campo Imperatore → Lago di Campotosto (#1546), Costa Concordia → Isola del Giglio Porto (#2026 e #2235), Forni di Sopra → Monte Cridola (#1662), Santa Fiora → Vetta Monte Amiata (#1875), San Teodoro → Capo Coda Cavallo (#2210), stazione McMurdo → Antartide Observation Hill (#625), lago di Garda → Sirmione (#7846), valle Aurina → Cadipietra Klausberg (#8338), Alpi Apuane → Canevara Monte Grondilice (#9443).
+- SNIPPET TEMPORANEO: rimuovere dopo test/rollout completato (prossima versione pulita = v2.3). `MWT_VERSION` bumpata a 2.2.
+
 ## v3.44 (6 novembre 2026) — dataLayer di base: TUTTE le webcam della pagina
 
 - Richiesta di Luca: tracciare tutte le webcam quando una pagina ne contiene più di una. Estende il filtro `gtm4wp_compile_datalayer` della v3.43: raccoglie **tutti** gli shortcode `[mwp_webcam]` del contenuto (slug deduplicati, in ordine di contenuto).
