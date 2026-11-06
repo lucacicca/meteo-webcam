@@ -1,3 +1,12 @@
+## Tema Meteo Webcam — v2.5 (6 novembre 2026) — versione pulita: rimosso lo snippet mwt_focuskw + style.css allineato a 2.5
+
+- Luca rivede le keyword generate dallo snippet e decide di inserire le frasi chiave Yoast **a mano** nei ~26 post senza: nessuna generazione automatica. Lo snippet una-tantum `mwt_focuskw` (v2.4/v2.4.1, MAI caricate in produzione — l'FTP di Tophost era giù) viene rimosso da functions.php come da piano.
+- functions.php v2.5 = v2.3 + aggiornamento del commento di versione e della nota di deploy 9: diff verificato riga per riga, uniche differenze = riga MWT_VERSION e nota 9; parentesi graffe bilanciate 44/44 come la v2.3.
+- **style.css: header `Version:` portato da 2.0 a 2.5** (richiesta di Luca: è il numero che WordPress mostra nella pagina Temi, wp-admin/themes.php, ed era rimasto indietro dal lavoro v2.0). Nessuna regola CSS modificata.
+- README.md allineato: tema v2.1 → v2.5 nelle righe dei componenti e della struttura repo.
+- `MWT_VERSION` 2.5 (cache-bust `?ver=2.5` sul CSS).
+- Deploy: FTP di functions.php + style.css in wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifiche: `?ver=2.5` sul CSS nel sorgente, versione 2.5 nella pagina Temi di wp-admin, `?mwt_focuskw=1` non risponde più (corretto).
+
 ## Tema Meteo Webcam — functions.php v2.4.1 (6 novembre 2026) — mwt_focuskw: regola "parte specifica" (rivede la v2.4 mai caricata)
 
 - Luca rivede la regola della v2.4 (titolo intero in minuscolo, mai caricata): nei titoli a due parti divise da "-" la frase chiave deve essere la parte MENO GENERICA, PIÙ SPECIFICA e NON USATA da altri post. Casi di Luca: "Rimini - Vista sulla spiaggia" → "rimini"; "Antartide - Stazione McMurdo (The Observation Hill)" → "stazione mcmurdo" (parentesi tonde scartate).
@@ -279,6 +288,7 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 ## Note trasversali
 - Bug del salvataggio risolto in v3.13–v3.16: aggiungere webcam oltre la 40ª falliva — il campo credito della webcam "ostuni" conteneva ~32 MB di backslash raddoppiati a ogni salvataggio → POST da 50 MB → opzione serializzata oltre il max_allowed_packet di MySQL → update_option rifiutata in silenzio mentre l'admin mostrava comunque "Salvate N webcam".
 - Revisione CWV della v3.21: i problemi erano fetch remoto sincrono in richiesta, varianti rigenerate dal primo visitatore dopo ogni refresh, `<img>` senza dimensioni (CLS), refresh JS inefficace con srcset, placeholder assente nel frontend.
+
 
 
 

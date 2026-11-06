@@ -9,7 +9,7 @@ Plugin WordPress che integra le webcam bloccando l'hotlinking, facendo da proxy 
 Versione corrente: **v3.44** (6 novembre 2026, in produzione e collaudata). Il file va caricato in `wp-content/plugins/`.
 
 ### Tema custom "Meteo Webcam"
-Tema leggero **v2.1** (novembre 2026, attivo): 3 file (`style.css`, `functions.php`, `index.php`), zero JS nel tema, template unico, featured image eager + fetchpriority, card 16:9 con `add_image_size mwt-card` 640×360, VideoObject JSON-LD per embed YouTube e player Panomax (v1.8/v1.9), fix XSLT sitemap Yoast (v2.1).
+Tema leggero **v2.5** (novembre 2026, attivo): 3 file (`style.css`, `functions.php`, `index.php`), zero JS nel tema, template unico, featured image eager + fetchpriority, card 16:9 con `add_image_size mwt-card` 640×360, VideoObject JSON-LD per embed YouTube e player Panomax (v1.8/v1.9), fix XSLT sitemap Yoast (v2.1).
 
 ## Architettura (plugin)
 
@@ -52,8 +52,9 @@ W3 Total Cache, Yoast, Really Simple Security (ex Really Simple SSL), Google Sit
 
 ## Struttura repo
 
-- `CHANGELOG.md` — cronologia plugin v3.13 → v3.44 e tema v1.0 → v2.1
+- `CHANGELOG.md` — cronologia plugin v3.13 → v3.44 e tema v1.0 → v2.5
 - `docs/notes.md` — casi limite webcam, bug noti, diagnosi cron, note infrastruttura
 - `plugin/` — sorgente del plugin Meteo Webcam Proxy
 - `theme/` — sorgente del tema custom Meteo Webcam
 - `llms.txt` — istruzioni per agenti AI (da caricare nella root del sito accanto a robots.txt)
+

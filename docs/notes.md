@@ -235,3 +235,12 @@
 - Collaudo con porting TypeScript della logica su corpus campione: McMurdo ✓ (0 vs 0 → destra), Rimini ✓ (generica 100 perde), Rimini-con-kw-già-usata → MANUALE ✓ (esito voluto), Le Grazie ✓ (portovenere citata in altro titolo), Lerici ✓ (destra generica).
 - Tie-break "vince la destra": verificato che non danneggia i casi vista-* (la generica è squalificata dal +100 ≥ 50); "Cortina d'Ampezzo - Cinque Torri" → "cinque torri" (accettabile, la dry-run consente revisione caso per caso).
 - Deploy (Luca): identico alla v2.4 — FTP del solo functions.php v2.4.1 → `?mwt_focuskw=1` (dry-run con nota e punteggi) → `?mwt_focuskw=1&go=1` → i MANUALE restano a mano; poi v2.5 pulita.
+
+
+## 6 novembre 2026 (17) — Tema v2.5: versione pulita, keyword Yoast a mano + style.css a 2.5
+
+- Luca non è convinto delle keyword proposte dallo snippet mwt_focuskw: inserirà le frasi chiave a mano nei ~26 post senza. La generazione automatica (v2.4 titolo intero, v2.4.1 regola "parte specifica") non è MAI entrata in produzione — l'FTP di Tophost era irraggiungibile nel pomeriggio del 6/11, il deploy è stato rimandato e poi annullato.
+- v2.5 = v2.3 + nota di deploy 9 aggiornata: snippet rimosso, diff riga per riga verificato (uniche differenze: riga MWT_VERSION e nota 9), graffe bilanciate 44/44 come v2.3.
+- **Allineato l'header `Version:` di style.css da 2.0 a 2.5** (richiesta esplicita di Luca: è il numero mostrato da WordPress nella pagina Temi, wp-admin/themes.php; era fermo a 2.0 dal lavoro di chiusura del 2/11). Nessuna regola CSS toccata. README.md aggiornato di conseguenza (tema v2.1 → v2.5).
+- Deploy (Luca, quando l'FTP torna su): FTP di functions.php + style.css in wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifiche: `?ver=2.5` sul CSS nel sorgente, versione 2.5 in wp-admin/themes.php, `?mwt_focuskw=1` non risponde più.
+- Le frasi chiave mancanti restano un lavoro manuale di Luca nell'editor Yoast (nessuna scadenza); per i titoli a due parti la sua regola resta valida come guida: la parte meno generica, più specifica e non usata da altri post.
