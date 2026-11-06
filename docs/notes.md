@@ -142,3 +142,10 @@
 - **In GTM (Luca)**: variabili Data Layer `webcam_slugs`/`webcam_names`; per i report GA4 registrare `webcam_slugs` come dimensione personalizzata evento (limite ~100 caratteri: liste lunghissime vengono troncate). Per l'analisi per-singola-webcam restano `webcam_slug` e l'evento `webcam_offline` (un push per ogni webcam offline, invariato).
 - **NOTA deploy**: FTP del solo plugin; verifica in GTM Preview su un post con più webcam: Container Load mostra `webcam_slugs` con la lista completa.
 - **COLLAUDO 6/11 COMPLETATO** (Luca): v3.44 in produzione e funzionante; webcam pitigliano offline → immagine di cortesia + evento `webcam_offline` verificati in GTM/GA4; chiavi `webcam_slugs`/`webcam_names` visibili nel Container Load. Pitigliano era già nel foglio di pulizia come "da rivedere" (403 WAF/referer): da sistemare col pulsante Test/referer o da eliminare.
+
+
+## 6 novembre 2026 (5) — README aggiornato allo stato di novembre
+
+- Luca segnala che la sezione "Stato attuale (ottobre 2026)" del README contava ancora 88 webcam: era ferma a prima dell'import da hotlink. README portato allo stato reale: **632 webcam in config** (88 → picco 713 post-import → 632 dopo pulizia del 30/10 e dedup), filtri cron attivi (batch 120 / budget 55s / parallel 6), mwp-status del 2/11 (healthy true, fresh 614/632 = 97%, stale 13, backoff 6, missing 5).
+- Aggiornate anche le altre sezioni obsolete: versione plugin v3.29 → v3.44, tema v1.0 → v2.1 (VideoObject JSON-LD, fix XSLT sitemap), architettura (backoff progressivo v3.34, cortesia SVG v3.42, integrazione GA4/GTM v3.42-v3.44, curl_multi, retry HTTP/1.1, auth Basic/Digest), lista plugin attivi del 2/11 (niente Jetpack/Bing Webmaster Tools; aggiunti GTM4WP, CF7, Limit Login, Redirection, Contextual Related Posts), struttura repo con llms.txt.
+- Nessun cambiamento al codice: solo documentazione, nessun bump di versione.
