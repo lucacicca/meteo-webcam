@@ -1,3 +1,12 @@
+## Tema Meteo Webcam — functions.php v2.2.4 (6 novembre 2026) — ROLLOUT link interni a lotti: snippet mwt_link_rollout (764 righe)
+
+- Sostituisce lo snippet di test `mwt_link_test` (v2.2.x) con il rollout completo del report "Link interni contestuali: 796 suggerimenti": 764 righe = 751 OK + 13 con anchor alternativo (incluse le 4 del test v2.2.3); escluse le 32 righe concorrenti senza alternativa (le salterebbe comunque il check Yoast a runtime).
+- Le 764 frasi sono state verificate offline sul dump: presenti verbatim nel contenuto del post (763 OK; una corretta a mano: #842 "rifugio città di Mantova" con l'accento reale del testo, l'audit l'aveva normalizzata senza).
+- Lavoro a lotti da 50 righe (16 lotti): `?mwt_link_rollout=1` riepilogo con stato per lotto, `&batch=N` dry-run del lotto, `&batch=N&go=1` applica, `&batch=N&undo=1` rimuove i link del lotto, `&undo=1` rimuove TUTTI i link applicati.
+- Registro dei link applicati nell'opzione `mwt_link_rollout_applied` (righe "lotto|ID|frase|slug"): go idempotente tra i lotti, undo per lotto o globale, riepilogo con contatore per lotto. I 6 link già applicati dal test v2.2.2/v2.2.3 risultano "già presente" e vengono saltati senza errore.
+- Controlli ereditati da v2.2.x, tutti attivi: prima occorrenza libera (skip dentro <a>/tag HTML/shortcode/commenti HTML <!-- ... -->), anchor con il testo originale del contenuto, skip se l'anchor contiene la frase chiave Yoast del post ("link concorrenti"), skip se un link al target esiste già, update $wpdb senza revisioni, w3tc_flush_post per ogni post toccato.
+- Deploy: FTP del solo functions.php v2.2.4 → `?mwt_link_rollout=1` (riepilogo) → `&batch=1` (dry-run: controllare i contesti) → `&batch=1&go=1` → lotto per lotto fino al 16 → verifica Yoast su alcune pagine toccate → a lavoro finito rimozione dello snippet (versione pulita v2.3).
+
 ## Tema Meteo Webcam — functions.php v2.2.3 (6 novembre 2026) — mwt_link_test: anchor alternativi per le righe concorrenti
 
 - Dopo il go v2.2.2 (2/10 applicati, 8 SKIP concorrenti) Luca sceglie la strada degli anchor alternativi: per le righe in cui l'anchor originale coincide con la frase chiave Yoast della pagina, si cerca nel testo dello stesso post una menzione del toponimo del target che non sia concorrente.
