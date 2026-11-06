@@ -226,3 +226,12 @@
 - Nota attesa: i post quasi senza testo (i "target senza testo" del report link, es. Roma #1016) mostreranno check Yoast rossi di densità dopo l'assegnazione; titoli molto lunghi (es. "Portovenere, Isola Palmaria e Isola del Tino") daranno keyphrase lunga. È la conseguenza naturale della regola scelta, da accettare o ritoccare a mano sui singoli casi.
 - Deploy (Luca): FTP del solo functions.php v2.4 → aprire da amministratore `?mwt_focuskw=1` (dry-run, revisione lista) → `?mwt_focuskw=1&go=1` → campione nell'editor Yoast. Poi rimozione dello snippet nella versione pulita v2.5.
 - Contesto collegato: stessa sessione = decisione di lasciare il suggerimento Yoast "Frase chiave nel sottotitolo" (arancione, impatto minimo) e di disattivare il toggle Yoast Site features → AI tools → LLMS.txt (il file llms.txt del sito è quello artigianale del 1/11, Yoast non deve generarlo).
+
+
+## 6 novembre 2026 (16) — Tema v2.4.1: regola "parte specifica" per le frasi chiave (rivede la v2.4)
+
+- Luca rivede la regola v2.4 (titolo intero, MAI caricata in produzione): "usa delle due parti divise da '-' la keyword meno generica, più specifica e non usata da altri post". Esempi suoi: "Rimini - Vista sulla spiaggia" → "rimini" (NON "rimini – vista sulla spiaggia"); "Antartide - Stazione McMurdo (The Observation Hill)" → "stazione mcmurdo" (NON "antartide").
+- v2.4.1 (commit del 6/11): mwt_focuskw_pick valuta le due parti normalizzate (parentesi tonde scartate, minuscolo): squalifica le già usate come frase chiave (+ set runtime coerente tra dry-run e go), +100 alle formule generiche (vista/veduta/panorama/scorcio/immagine/guardando o "vista sul/la/dal..."), +10 per ogni altro titolo che contiene la parte, parità → vince la destra (specificità). Nessuna parte utilizzabile → riga MANUALE, post lasciato senza frase chiave da sistemare a mano.
+- Collaudo con porting TypeScript della logica su corpus campione: McMurdo ✓ (0 vs 0 → destra), Rimini ✓ (generica 100 perde), Rimini-con-kw-già-usata → MANUALE ✓ (esito voluto), Le Grazie ✓ (portovenere citata in altro titolo), Lerici ✓ (destra generica).
+- Tie-break "vince la destra": verificato che non danneggia i casi vista-* (la generica è squalificata dal +100 ≥ 50); "Cortina d'Ampezzo - Cinque Torri" → "cinque torri" (accettabile, la dry-run consente revisione caso per caso).
+- Deploy (Luca): identico alla v2.4 — FTP del solo functions.php v2.4.1 → `?mwt_focuskw=1` (dry-run con nota e punteggi) → `?mwt_focuskw=1&go=1` → i MANUALE restano a mano; poi v2.5 pulita.

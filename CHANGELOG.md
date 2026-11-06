@@ -1,3 +1,11 @@
+## Tema Meteo Webcam — functions.php v2.4.1 (6 novembre 2026) — mwt_focuskw: regola "parte specifica" (rivede la v2.4 mai caricata)
+
+- Luca rivede la regola della v2.4 (titolo intero in minuscolo, mai caricata): nei titoli a due parti divise da "-" la frase chiave deve essere la parte MENO GENERICA, PIÙ SPECIFICA e NON USATA da altri post. Casi di Luca: "Rimini - Vista sulla spiaggia" → "rimini"; "Antartide - Stazione McMurdo (The Observation Hill)" → "stazione mcmurdo" (parentesi tonde scartate).
+- Scoring nel pick (vince il punteggio più basso): SQUALIFICATA = già frase chiave di un altro post o assegnata prima nella stessa run (wpdb su _yoast_wpseo_focuskw + set runtime, anche nel dry-run per coerenza col go); +100 = formula generica da titolo webcam (inizia con vista/veduta/panorama/scorcio/immagine/guardando o contiene "vista sul/la/dal..."); +10 per ogni ALTRO titolo pubblicato che contiene la parte (più citata = più generica); a parità vince la parte destra (il soggetto specifico sta spesso a destra). Se nessuna parte è utilizzabile la riga esce come **MANUALE**: nessuna assegnazione, il post resta da sistemare a mano (meglio che assegnare keyword sbagliate).
+- Dry-run arricchito: colonna Nota con punteggi delle due parti ("scelto X (0) su Y (100 generica)") e conteggio dei MANUALE nel riepilogo.
+- Collaudo logica su casi campione (porting TS): "Antartide - Stazione McMurdo" → stazione mcmurdo ✓; "Rimini - Vista sulla spiaggia" → rimini, ma con "rimini" già usata da un altro post → MANUALE ✓; "Lerici - Vista sul Golfo dei Poeti..." → lerici ✓; "Le Grazie - Portovenere" → le grazie (portovenere citata in altro titolo) ✓.
+- Invariato il resto: hook template_redirect + admin_init, manage_options, idempotenza, solo postmeta, nessun flush, snippet da rimuovere in v2.5. `MWT_VERSION` 2.4.1. Deploy identico alla v2.4: FTP del solo functions.php → dry-run → go=1 → campione in editor Yoast.
+
 ## Tema Meteo Webcam — functions.php v2.4 (6 novembre 2026) — Yoast: frase chiave automatica per i post senza (snippet una-tantum mwt_focuskw)
 
 - Obiettivo: assegnare una frase chiave Yoast ai post pubblicati che non ce l'hanno. Dal censimento del 6/11 ~506 post su 532 ce l'hanno già (pm.csv): restano ~26. Regola scelta da Luca: frase chiave = titolo del post in minuscolo, coerente con le frasi chiave già in uso sul sito ("monte amiata", "isola del giglio", "soraga"); solo post pubblicati, niente pagine né bozze.
@@ -271,6 +279,7 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 ## Note trasversali
 - Bug del salvataggio risolto in v3.13–v3.16: aggiungere webcam oltre la 40ª falliva — il campo credito della webcam "ostuni" conteneva ~32 MB di backslash raddoppiati a ogni salvataggio → POST da 50 MB → opzione serializzata oltre il max_allowed_packet di MySQL → update_option rifiutata in silenzio mentre l'admin mostrava comunque "Salvate N webcam".
 - Revisione CWV della v3.21: i problemi erano fetch remoto sincrono in richiesta, varianti rigenerate dal primo visitatore dopo ogni refresh, `<img>` senza dimensioni (CLS), refresh JS inefficace con srcset, placeholder assente nel frontend.
+
 
 
 

@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.4' ); // v2.4: snippet una-tantum mwt_focuskw (frase chiave Yoast automatica per i post senza). Storia: v2.3 rimozione mwt_link_rollout (rollout 6/11: 756 link); v2.2.x mwt_link_test/rollout link interni; v2.1 fix XSLT sitemap
+define( 'MWT_VERSION', '2.4.1' ); // v2.4.1: regola "parte specifica" per lo snippet mwt_focuskw (tra le due parti del titolo divise da "-" vince la meno generica, più specifica e non usata da altri post). v2.4 (titolo intero) mai caricata. Storia: v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
 
 /* ============ Setup ============ */
 
@@ -310,28 +310,133 @@ add_filter( 'mwp_cron_batch', function () { return 120; } );
 // con cron ogni minuto: i run si accavallerebbero (Tophost, worker limitati).
 add_filter( 'mwp_cron_time_budget', function () { return 55; } );
 
-/* ============ Yoast: frase chiave automatica per i post senza (v2.4, snippet una-tantum) ============ */
+/* ============ Yoast: frase chiave automatica per i post senza (v2.4.1, snippet una-tantum) ============ */
 
 /*
  * Assegna la frase chiave Yoast ai post pubblicati che non ce l'hanno
  * (dal censimento del 6/11: ~506 post su 532 ce l'hanno già, restano ~26).
  *
- * Regola scelta da Luca: frase chiave = titolo del post in minuscolo,
- * coerente con le frasi chiave già in uso sul sito ("monte amiata",
- * "isola del giglio", "soraga"). Solo post pubblicati: niente pagine,
- * niente bozze.
+ * Regola scelta da Luca (v2.4.1, rivede la v2.4 mai caricata): se il titolo
+ * ha due parti divise da "-", si usa la parte MENO GENERICA e PIÙ SPECIFICA
+ * che non sia già la frase chiave di un altro post. Casi di Luca:
+ *   "Rimini - Vista sulla spiaggia"                      -> "rimini"
+ *   "Antartide - Stazione McMurdo (The Observation Hill)" -> "stazione mcmurdo"
+ * Titoli senza separatore: frase chiave = titolo intero in minuscolo.
+ * Le parti tra parentesi tonde vengono scartate prima ("Stazione McMurdo
+ * (The Observation Hill)" -> "stazione mcmurdo").
+ *
+ * Come vince la parte (punteggio piu' basso):
+ *   - SQUALIFICATA: già frase chiave di un altro post (o assegnata prima in questa run)
+ *   - +100: formula generica da titolo webcam (inizia con vista/veduta/
+ *     panorama/scorcio/immagine/guardando o contiene "vista sul/la/dal...")
+ *   - +10 per ogni ALTRO titolo pubblicato che contiene la parte
+ *     (più citata = più generica)
+ *   - a parità vince la parte DESTRA (il soggetto specifico sta spesso a destra)
+ * Se nessuna parte è utilizzabile, la riga esce come "MANUALE": nessuna
+ * assegnazione, il post resta da sistemare a mano (meglio che assegnare
+ * una keyword sbagliata).
  *
  * Pagina strumento (da loggati come amministratore):
- *   ?mwt_focuskw=1        dry-run: tabella ID / titolo / frase chiave proposta
+ *   ?mwt_focuskw=1        dry-run: tabella ID / titolo / frase chiave proposta / nota
  *   ?mwt_focuskw=1&go=1   applica con update_post_meta su _yoast_wpseo_focuskw
  *
- * Caratteristiche: idempotente (i post con frase chiave già impostata
- * vengono saltati, si può rilanciare senza rischi); solo postmeta letto
- * dall'analisi Yoast in admin → NESSUN impatto sul frontend, nessuna
- * revisione creata, nessun flush di cache richiesto.
+ * Idempotente: i post con frase chiave già impostata vengono saltati
+ * (rilanciare è sicuro). Solo postmeta letto dall'analisi Yoast in admin:
+ * NESSUN impatto sul frontend, nessuna revisione, nessun flush richiesto.
  *
  * SNIPPET TEMPORANEO: rimuovere a lavoro completato (versione pulita v2.5).
  */
+
+/** Normalizzazione: parentesi tonde rimosse, minuscolo, spazi collassati. */
+function mwt_focuskw_norm( $s ) {
+	$s = preg_replace( '/\s*\([^)]*\)/u', '', (string) $s );
+	$s = mb_strtolower( $s );
+	$s = preg_replace( '/\s+/u', ' ', $s );
+	return trim( (string) $s );
+}
+
+/** true se la parte è una formula generica da titolo webcam ("vista sulla spiaggia"...). */
+function mwt_focuskw_generic( $s ) {
+	return (bool) preg_match( '/^(vista|veduta|panorama|panoramica|scorcio|immagine|guardando)/u', (string) $s )
+		|| (bool) preg_match( '/\b(vista|veduta|panorama)\s+(su|sul|sulla|sui|sulle|dal|dalla|dai|dagli|degli|delle|del|dello|verso)\b/u', (string) $s );
+}
+
+/** Quanti ALTRI titoli pubblicati contengono la parte (più citata = più generica). */
+function mwt_focuskw_freq( $candidate, $my_id, $titles ) {
+	$n = 0;
+	foreach ( $titles as $id => $t ) {
+		if ( (int) $id === (int) $my_id || '' === $t ) {
+			continue;
+		}
+		if ( false !== mb_strpos( $t, $candidate ) ) {
+			$n++;
+		}
+	}
+	return $n;
+}
+
+/**
+ * Sceglie la frase chiave per un post: titolo a due parti divise da "-"
+ * -> regola; altrimenti titolo intero. Ritorna array( frase_chiave, nota ),
+ * frase chiave vuota = MANUALE (non assegnare, rivedere a mano).
+ */
+function mwt_focuskw_pick( $id, $title, $titles, $used ) {
+	$base = mwt_focuskw_norm( $title );
+	if ( '' === $base ) {
+		return array( '', 'titolo vuoto' );
+	}
+
+	$parts = preg_split( '/\s+[-–—]\s+/u', $base, 2 );
+	if ( 2 === count( $parts ) && '' !== trim( $parts[0] ) && '' !== trim( $parts[1] ) ) {
+		$scored = array();
+		foreach ( array( trim( $parts[0] ), trim( $parts[1] ) ) as $part ) {
+			if ( isset( $used[ $part ] ) ) {
+				$scored[] = array( $part, -1, 'già usata da un altro post' );
+				continue;
+			}
+			$score = 0;
+			$why   = array();
+			if ( mwt_focuskw_generic( $part ) ) {
+				$score += 100;
+				$why[] = 'generica';
+			}
+			$freq = mwt_focuskw_freq( $part, $id, $titles );
+			if ( $freq > 0 ) {
+				$score += 10 * $freq;
+				$why[] = 'citata in ' . $freq . ' altri titoli';
+			}
+			$scored[] = array( $part, $score, implode( ', ', $why ) );
+		}
+
+		// Punteggio più basso vince; a parità vince la parte destra (più specifica).
+		$best_i     = -1;
+		$best_score = null;
+		foreach ( $scored as $i => $sc ) {
+			if ( $sc[1] < 0 ) {
+				continue;
+			}
+			if ( null === $best_score || $sc[1] <= $best_score ) {
+				$best_i     = $i;
+				$best_score = $sc[1];
+			}
+		}
+		if ( $best_i < 0 || $best_score >= 50 ) {
+			return array( '', 'nessuna parte utilizzabile (già usate o generiche): rivedere a mano' );
+		}
+
+		$winner = $scored[ $best_i ];
+		$other  = $scored[ 1 - $best_i ];
+		$note   = 'scelto "' . $winner[0] . '" (' . $winner[1] . ' ' . $winner[2] . ') su "' . $other[0] . '" (' . $other[1] . ' ' . $other[2] . ')';
+		return array( $winner[0], $note );
+	}
+
+	// Nessun separatore: frase chiave = titolo intero (già normalizzato).
+	if ( isset( $used[ $base ] ) ) {
+		return array( '', 'frase chiave identica già usata da un altro post: rivedere a mano' );
+	}
+	return array( $base, 'titolo senza separatore: keyword = titolo' );
+}
+
 function mwt_focuskw_fill() {
 	if ( ! isset( $_GET['mwt_focuskw'] ) ) {
 		return;
@@ -342,37 +447,56 @@ function mwt_focuskw_fill() {
 
 	$go = ( isset( $_GET['go'] ) && '1' === $_GET['go'] );
 
-	$q = new WP_Query( array(
+	// Tutti i post pubblicati: titoli normalizzati (frequenza) e frase
+	// chiave esistente di ogni post (esclusività).
+	$q_all = new WP_Query( array(
 		'post_type'              => 'post',
 		'post_status'            => 'publish',
 		'posts_per_page'         => -1,
 		'no_found_rows'          => true,
 		'update_post_term_cache' => false,
 	) );
+	$titles = array();
+	foreach ( $q_all->posts as $p ) {
+		$titles[ $p->ID ] = mwt_focuskw_norm( get_the_title( $p ) );
+	}
+	$total = count( $q_all->posts );
 
-	$total   = count( $q->posts );
+	global $wpdb;
+	$used = array();
+	foreach ( (array) $wpdb->get_results( "SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_yoast_wpseo_focuskw'" ) as $row ) {
+		$v = mwt_focuskw_norm( (string) $row->meta_value );
+		if ( '' !== $v ) {
+			$used[ $v ] = true;
+		}
+	}
+
 	$with_kw = 0; // post che hanno già la frase chiave
 	$todo    = 0; // post senza frase chiave (candidati)
+	$manual  = 0; // candidati non risolvibili: da fare a mano
 	$applied = 0;
 	$rows    = array();
 
-	foreach ( $q->posts as $p ) {
+	foreach ( $q_all->posts as $p ) {
 		$existing = (string) get_post_meta( $p->ID, '_yoast_wpseo_focuskw', true );
 		if ( '' !== trim( $existing ) ) {
 			$with_kw++;
 			continue;
 		}
 
-		// Frase chiave = titolo del post, minuscolo, spazi normalizzati.
-		$kw = trim( mb_strtolower( get_the_title( $p ) ) );
-		$kw = preg_replace( '/\s+/u', ' ', $kw );
+		list( $kw, $note ) = mwt_focuskw_pick( $p->ID, get_the_title( $p ), $titles, $used );
+		$todo++;
+
 		if ( '' === $kw ) {
+			$manual++;
+			$rows[] = array( $p->ID, get_the_title( $p ), 'MANUALE', $note );
 			continue;
 		}
 
-		$todo++;
-		$rows[] = array( $p->ID, get_the_title( $p ), $kw );
+		$rows[] = array( $p->ID, get_the_title( $p ), $kw, $note );
 
+		// Segnata come usata anche nel dry-run: la run è coerente col go.
+		$used[ $kw ] = true;
 		if ( $go ) {
 			update_post_meta( $p->ID, '_yoast_wpseo_focuskw', $kw );
 			$applied++;
@@ -381,16 +505,16 @@ function mwt_focuskw_fill() {
 
 	header( 'Content-Type: text/html; charset=utf-8' );
 	echo '<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>mwt_focuskw</title></head><body>';
-	echo '<h2>Yoast: frase chiave automatica (tema v2.4)</h2>';
-	echo '<p>Post pubblicati: <strong>' . intval( $total ) . '</strong> &mdash; con frase chiave gi&agrave; impostata: <strong>' . intval( $with_kw ) . '</strong> &mdash; senza: <strong>' . intval( $todo ) . '</strong>';
+	echo '<h2>Yoast: frase chiave automatica (tema v2.4.1)</h2>';
+	echo '<p>Post pubblicati: <strong>' . intval( $total ) . '</strong> &mdash; con frase chiave gi&agrave; impostata: <strong>' . intval( $with_kw ) . '</strong> &mdash; senza: <strong>' . intval( $todo ) . '</strong> &mdash; di cui MANUALE (da rivedere): <strong>' . intval( $manual ) . '</strong>';
 	if ( $go ) {
 		echo ' &mdash; applicate ora: <strong>' . intval( $applied ) . '</strong>';
 	}
 	echo '</p>';
-	echo '<p>Modalit&agrave;: <strong>' . ( $go ? 'GO (applicato)' : 'DRY-RUN (nessuna modifica)' ) . '</strong>. Regola: frase chiave = titolo del post in minuscolo.</p>';
-	echo '<table border="1" cellpadding="6" cellspacing="0"><tr><th>ID</th><th>Titolo</th><th>Frase chiave</th></tr>';
+	echo '<p>Modalit&agrave;: <strong>' . ( $go ? 'GO (applicato)' : 'DRY-RUN (nessuna modifica)' ) . '</strong>. Regola: tra le parti del titolo divise da &quot;-&quot; vince la meno generica, pi&ugrave; specifica e non usata da altri post; senza separatore = titolo intero.</p>';
+	echo '<table border="1" cellpadding="6" cellspacing="0"><tr><th>ID</th><th>Titolo</th><th>Frase chiave</th><th>Nota</th></tr>';
 	foreach ( $rows as $r ) {
-		echo '<tr><td>' . intval( $r[0] ) . '</td><td>' . esc_html( $r[1] ) . '</td><td>' . esc_html( $r[2] ) . '</td></tr>';
+		echo '<tr><td>' . intval( $r[0] ) . '</td><td>' . esc_html( $r[1] ) . '</td><td>' . esc_html( $r[2] ) . '</td><td>' . esc_html( $r[3] ) . '</td></tr>';
 	}
 	echo '</table>';
 	echo '<p><a href="?mwt_focuskw=1">&larr; dry-run</a>';
@@ -403,6 +527,7 @@ function mwt_focuskw_fill() {
 }
 add_action( 'template_redirect', 'mwt_focuskw_fill' );
 add_action( 'admin_init', 'mwt_focuskw_fill' );
+
 
 /* ============ Note per la messa in produzione ============ */
 
@@ -436,8 +561,13 @@ add_action( 'admin_init', 'mwt_focuskw_fill' );
  *    Il registro mwt_link_rollout_applied resta nel DB: per un eventuale undo
  *    ricaricare temporaneamente la v2.2.4 e usare ?mwt_link_rollout=1&undo=1,
  *    poi tornare alla v2.3 (l'opzione si elimina da wp_options quando non serve).
- * 9) v2.4: snippet una-tantum mwt_focuskw — assegna la frase chiave Yoast
- *    (titolo del post in minuscolo) ai post pubblicati che non ce l'hanno.
+ * 9) v2.4/v2.4.1: snippet una-tantum mwt_focuskw — assegna la frase chiave
+ *    Yoast ai post pubblicati che non ce l'hanno. Regola v2.4.1 (rivede la
+ *    v2.4 mai caricata, che usava il titolo intero): nei titoli a due parti
+ *    divise da "-" vince la parte meno generica, più specifica e non già
+ *    usata da altri post (es. "Rimini - Vista sulla spiaggia" -> "rimini",
+ *    "Antartide - Stazione McMurdo (The Observation Hill)" -> "stazione
+ *    mcmurdo"); i casi non risolvibili escono come MANUALE e restano a mano.
  *    Deploy = FTP del solo functions.php; da loggati come admin aprire
  *    /?mwt_focuskw=1 (dry-run: controllare la tabella) poi /?mwt_focuskw=1&go=1.
  *    Nessun flush di cache richiesto: tocca solo il postmeta _yoast_wpseo_focuskw,
@@ -445,4 +575,5 @@ add_action( 'admin_init', 'mwt_focuskw_fill' );
  *    poi qualche check Yoast rosso di densità: atteso, non è un errore.
  *    A lavoro completato rimuovere lo snippet nella versione pulita v2.5.
  */
+
 
