@@ -134,7 +134,6 @@
 
 
 
-
 ## 6 novembre 2026 (4) — Plugin v3.44: dataLayer di base con TUTTE le webcam della pagina
 
 - Luca chiede di tracciare tutte le webcam quando una pagina ne contiene più di una (la v3.43 portava solo la "principale", la prima).
@@ -149,3 +148,12 @@
 - Luca segnala che la sezione "Stato attuale (ottobre 2026)" del README contava ancora 88 webcam: era ferma a prima dell'import da hotlink. README portato allo stato reale: **632 webcam in config** (88 → picco 713 post-import → 632 dopo pulizia del 30/10 e dedup), filtri cron attivi (batch 120 / budget 55s / parallel 6), mwp-status del 2/11 (healthy true, fresh 614/632 = 97%, stale 13, backoff 6, missing 5).
 - Aggiornate anche le altre sezioni obsolete: versione plugin v3.29 → v3.44, tema v1.0 → v2.1 (VideoObject JSON-LD, fix XSLT sitemap), architettura (backoff progressivo v3.34, cortesia SVG v3.42, integrazione GA4/GTM v3.42-v3.44, curl_multi, retry HTTP/1.1, auth Basic/Digest), lista plugin attivi del 2/11 (niente Jetpack/Bing Webmaster Tools; aggiunti GTM4WP, CF7, Limit Login, Redirection, Contextual Related Posts), struttura repo con llms.txt.
 - Nessun cambiamento al codice: solo documentazione, nessun bump di versione.
+
+## 6 novembre 2026 (6) — Audit link interni contestuali (solo analisi, nessun codice)
+
+- Obiettivo di Luca: aumentare i link interni del sito con **anchor contestuali nel testo** dei post (es. la pagina di Misurina cita "le Tofane" → link alla pagina webcam delle Tofane). ESCLUSA la sezione "correlate" a fondo post (già coperta da Contextual Related Posts).
+- Metodo (analisi offline sui dump phpMyAdmin wp_posts.csv / tr.csv / wp_options.csv del 6/11): 537 contenuti (532 post + 5 pagine), 371 post con shortcode webcam, 642 webcam in config. Pipeline awk: estrazione entità dai titoli, dai nomi webcam della config e dai tag di luogo (frequenza ≤ 8), normalizzate (minuscole, accenti rimossi, varianti piena e strippata dei generici tipo monte/lago/passo); matching sul testo normalizzato con confini di parola, saltando le coppie già linkate e le menzioni già dentro `<a href>`.
+- Regole di cura del report: anchor multi-parola con score ≥ 8; anchor a parola singola ammessa solo se presente nel titolo/nome webcam del target, con score ≥ 7 e coerenza geografica (categoria o tag condiviso); blacklist di sostantivi/aggettivi comuni che generavano falsi positivi (grazie, neve, cavallo, forno, falco, versante est, porto turistico, yacht club, ...); target "redirect" esclusi; massimo 10 suggerimenti per pagina.
+- **Risultato: 796 suggerimenti di link su 372 pagine** (score medio 10,3; 251 con score ≥ 12). Report tabellare consegnato a Luca in canvas Vibe ("Link interni contestuali: 796 suggerimenti"): pagina A, anchor, pagina B target, URL B, occorrenze, score, note e frase di contesto (testo normalizzato senza accenti, per trovarla con la ricerca dell'editor).
+- Note del report: "ambigua (N target)" = l'entità mappa su N pagine e il target canonico è l'id più basso (verificare a mano se è la pagina giusta, es. "costa crociere" → Trapani invece che Genova-relitto); "autoref." = la pagina A cita il toponimo di cui è essa stessa target → il link va alla pagina "fratello" dello stesso luogo (es. Moena → Lago di Soraga), da valutare; "target senza testo" = pagine quasi senza contenuto (es. Roma #1016) da verificare prima di linkarle.
+- Prossimi passi: Luca esamina il report e sceglie i link da inserire; poi si deciderà se applicarli con uno snippet una-tantum (update wpdb) o a mano nell'editor. Nessun bump di versione: nessuna modifica a plugin/tema in questo lavoro.
