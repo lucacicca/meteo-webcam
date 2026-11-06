@@ -72,7 +72,7 @@
 - Da fare: caricare via FTP plugin v3.40 in wp-content/plugins/ + llms.txt in root, flush page cache W3TC, verificare una pagina (es. Abetone) da mobile e nel sorgente HTML.
 
 ## 2 novembre 2026 — Tema v1.8: VideoObject JSON-LD per gli embed YouTube (indicizzazione video GSC)
-- Diagnosi dal report Video di Google Search Console: le pagine con video YouTube embed NON risultavano indicizzate come pagine video (es. /san-pellegrino-in-alpe/), mentre quelle con file .mp4 direttamente nell'HTML sì (es. /tre-cime-di-lavaredo-dalla-malga-langalm/). L'ispezione GSC della pagina San Pellegrino mostra che Google vede il video (content URL = iframe embed YuvgiDTzxhU, thumbnail fornita da YouTube) ma lo classifica "supplementary content": senza dati strutturati VideoObject la pagina watch di YouTube resta l'unica ospite canonica del video e la pagina del sito non entra nel registro video.
+- Diagnosi dal report Video di Google Search Console: le pagine con video YouTube embed NON risultavano indicizzate come pagine video (es. /san-pellegrino-in-alpe/), mentre quelle con file .mp4 direttamente nell'HTML sì (es. /tre-cime-di-lavaredo-dalla-malga-langalm/). L'ispezione GSC della pagina San Pellegrino mostra che Google vede il video (content URL = iframe embed YuvgiDTzxhU, thumbnail fornito da YouTube) ma lo classifica "supplementary content": senza dati strutturati VideoObject la pagina watch di YouTube resta l'unica ospite canonica del video e la pagina del sito non entra nel registro video.
 - Fix in functions.php v1.8: `mwt_video_schema` su `wp_head` (prio 20) — sui post singoli pubblicati estrae gli ID YouTube dal contenuto (youtube.com/embed|live|v, youtube-nocookie.com, youtu.be; oEmbed WP e iframe manuali) ed emette un VideoObject per ogni video unico: name (titolo post), description (excerpt 200 char), thumbnailUrl (featured image `large`, fallback i.ytimg.com maxresdefault), uploadDate (data del post), embedUrl + contentUrl. Filtro `mwt_video_schema` per disattivare.
 - ESITO: caricata in produzione da Luca il 2/11 e verificata (VideoObject presente su /san-pellegrino-in-alpe/ e /porto-di-pisa-marina-di-pisa/); avviata in GSC la validazione del motivo "Video isn't on a watch page". Attesa ~2-3 settimane; segnali di successo: report Video, conteggio pagine in errore in "SEE DETAILS", rich results test. Se restano pagine non indicizzate → prossima mossa video sitemap.
 
@@ -106,7 +106,7 @@
 ## 6 novembre 2026 — Plugin v3.41: evento GA4 webcam_offline + immagine di cortesia
 
 - Obiettivo di Luca: accorgersi quando una webcam non è più scaricabile dal plugin (hotlink morto) e non mostrare al visitatore un'immagine stale fuorviante.
-- **Notifiche GA4 server-side via Measurement Protocol** (nessun tag GTM, diverso dal vecchio evento client-side chiuso il 30/10): al 3° fallimento consecutivo di fetch (filtro `mwp_ga_offline_threshold`, default 3, ~7 minuti dal guasto) il cron invia l'evento GA4 `webcam_offline` con parametri `webcam_slug`, `webcam_name`, `failure_count`; alla ripresa invia `webcam_online` (se il conteggio era ≥ soglia); le webcam ancora morte mandano un promemoria 1/giorno (fail marker ora conta fino a 1000 invece di 20: oltre count 12 ogni marker = un giorno di morte in più, per il promemoria quotidiano). Hook in `mwp_mark_fail`/`mwp_clear_fail`.
+- **Notifiche GA4 server-side via Measurement Protocol** (nessun tag GTM, diverso dal vecchio evento client-side chiuso il 30/10): al 3° fallimento consecutivo di fetch (filtro `mwp_ga_offline_threshold`, default 3, ~7 minuti dal guasto) il cron invia l'evento GA4 `webcam_offline` con parametri `webcam_slug`, `webcam_name`, `failure_count`; alla ripresa invia `webcam_online` (se il conteggio era ≥ soglia); le webcam ancora morte mandano un promemoria 1/giorno (fail marker ora conta fino a 1000 invece di 20: oltre count 12 ogni marker = un giorno di morte in più, per il promemorio quotidiano). Hook in `mwp_mark_fail`/`mwp_clear_fail`.
 - Configurazione: admin → "Notifiche webcam offline su Google Analytics" — opzioni `mwp_ga_measurement_id` / `mwp_ga_api_secret` / `mwp_ga_client_id` (senza Measurement ID + secret: nessun evento). Pulsante "Invia evento di test" che usa l'endpoint DEBUG `/debug/mp/collect` (il normale `/mp/collect` risponde 204 anche con secret sbagliato, quindi non verificherebbe nulla).
 - **Immagine di cortesia**: webcam stantia oltre `mwp_stale_max_age` (filtro, default 86400s = 24h) servita con SVG "Webcam temporaneamente indisponibile" al posto dell'ultima istantanea; anche senza cache (prima: 503). Lo shortcode emette `?v=off{mtime}` in cortesia così il browser non serve dalla sua cache l'immagine vecchia; alla ripresa l'mtime cambia e l'URL torna quella buona. Anteprime admin (`?mwp_preview`) invariate (mostrano la cache reale per diagnosi).
 - **Bug v3.40 trovato e recuperato**: la nota "Webcam in tempo reale: l'immagine si aggiorna automaticamente." era dichiarata nella changelog v3.40 (4b5f110) ma mai emessa dal codice (filtro `mwp_refresh_note` inesistente nel corpo). Ora esiste davvero, sotto l'immagine e sopra il figcaption del credito, disattivabile col filtro. Testo placeholder client-side unificato ("Webcam temporaneamente indisponibile").
@@ -130,10 +130,6 @@
 - Caveat page cache: il dataLayer è HTML cachato → nome/slug riflettono la config al momento della generazione della pagina.
 - **NOTA deploy**: FTP del solo plugin; verifica in GTM Preview: su un post webcam il primo push (Container Load) mostra webcam_slug/webcam_name; su un post senza webcam le chiavi non ci sono.
 
-
-
-
-
 ## 6 novembre 2026 (4) — Plugin v3.44: dataLayer di base con TUTTE le webcam della pagina
 
 - Luca chiede di tracciare tutte le webcam quando una pagina ne contiene più di una (la v3.43 portava solo la "principale", la prima).
@@ -141,7 +137,6 @@
 - **In GTM (Luca)**: variabili Data Layer `webcam_slugs`/`webcam_names`; per i report GA4 registrare `webcam_slugs` come dimensione personalizzata evento (limite ~100 caratteri: liste lunghissime vengono troncate). Per l'analisi per-singola-webcam restano `webcam_slug` e l'evento `webcam_offline` (un push per ogni webcam offline, invariato).
 - **NOTA deploy**: FTP del solo plugin; verifica in GTM Preview su un post con più webcam: Container Load mostra `webcam_slugs` con la lista completa.
 - **COLLAUDO 6/11 COMPLETATO** (Luca): v3.44 in produzione e funzionante; webcam pitigliano offline → immagine di cortesia + evento `webcam_offline` verificati in GTM/GA4; chiavi `webcam_slugs`/`webcam_names` visibili nel Container Load. Pitigliano era già nel foglio di pulizia come "da rivedere" (403 WAF/referer): da sistemare col pulsante Test/referer o da eliminare.
-
 
 ## 6 novembre 2026 (5) — README aggiornato allo stato di novembre
 
@@ -167,7 +162,7 @@
 
 ## 6 novembre 2026 (8) — Test link interni: tema v2.2.1, bug del dry-run su #1546 (commenti HTML)
 
-- Luca esegue il dry-run del test delle 10 righe (v2.2 caricata in produzione) e nota un contesto anomalo su #1546. Riverifica sul dump: 9/10 righe OK (prima menzione in prosa visibile subito dopo lo shortcode); su #1546 lo snippet puntava a "Campo Imperatore" dentro un blocco legacy commentato `<!-- [caption]…` prima dello shortcode [mwp_webcam] → il link sarebbe stato invisibile sul frontend. Nota cosmetica: i "contesti" multi-riga del dry-run sono normali, sono gli a-capo reali del contenuto dei post.
+- Luca esegue il dry-run del test delle 10 righe (v2.2 caricata in produzione) e nota un contesto anomalo su #1546. Riverifica sul dump: 9/10 righe OK (prima menzione in prosa visibile subito dopo lo shortcode); su #1546 lo snippet puntava a "Campo Imperatore" dentro un blocco legacy commentato `<!-- [caption]…` prima dello shortcode [mwp_webcam] → il link sarebbe stato invisibile sul frontend. Nota cosmetica: i "contesti" multi-riga del dry-run sono normali, sono gli a-capò reali del contenuto dei post.
 - Fix v2.2.1 (commit su main): `mwt_link_test_find` salta le occorrenze dentro commenti HTML, controllando `<!--` vs `-->` sul prefisso intero del contenuto (non sul tail di 500 char: i blocchi legacy commentati possono essere lunghi). Dopo il fix #1546 punta a "L'Hotel Campo Imperatore" (primo paragrafo di prosa); le altre 9 righe non cambiano.
 - Deploy (Luca): FTP del solo functions.php v2.2.1 in wp-content/themes/meteo-webcam/; nuovo dry-run `?mwt_link_test=1` (verificare #1546 con contesto "L'Hotel Campo Imperatore" e le altre 9 invariate), poi `?mwt_link_test=1&go=1` e verifica frontend.
 - Per il futuro rollout delle ~786 righe: i blocchi legacy commentati prima dello shortcode sono un pattern sistematico del sito → il check dei commenti HTML deve restare nello snippet definitivo; valutare anche un check sulle coppie [caption]…[/caption] non dentro commenti (caption visibili in pagina ma linkare lì non è l'obiettivo).
@@ -217,7 +212,6 @@
 - Il registro dei 750 link applicati resta nell'opzione `mwt_link_rollout_applied`; l'undo via URL non esiste più in v2.3. Per un eventuale undo: ricaricare temporaneamente la v2.2.4 e usare `?mwt_link_rollout=1&undo=1` (globale o `&batch=N&undo=1` per lotto), poi ri-caricare la v2.3. A lavoro chiuso l'opzione si elimina da wp_options.
 - Deploy (Luca): FTP del solo functions.php v2.3 in wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifica rapida: una pagina campione dal frontend con i link al loro posto e `?ver=2.3` sul CSS nel sorgente.
 
-
 ## 6 novembre 2026 (15) — Tema v2.4: frase chiave Yoast automatica per i post senza (snippet mwt_focuskw)
 
 - Luca chiede di impostare automaticamente la frase chiave Yoast su tutti i post in cui manca. Dal censimento del 6/11 ~506 post su 532 ce l'hanno già (pm.csv, `_yoast_wpseo_focuskw`): lo snippet copre i rimanenti (~26).
@@ -227,7 +221,6 @@
 - Deploy (Luca): FTP del solo functions.php v2.4 → aprire da amministratore `?mwt_focuskw=1` (dry-run, revisione lista) → `?mwt_focuskw=1&go=1` → campione nell'editor Yoast. Poi rimozione dello snippet nella versione pulita v2.5.
 - Contesto collegato: stessa sessione = decisione di lasciare il suggerimento Yoast "Frase chiave nel sottotitolo" (arancione, impatto minimo) e di disattivare il toggle Yoast Site features → AI tools → LLMS.txt (il file llms.txt del sito è quello artigianale del 1/11, Yoast non deve generarlo).
 
-
 ## 6 novembre 2026 (16) — Tema v2.4.1: regola "parte specifica" per le frasi chiave (rivede la v2.4)
 
 - Luca rivede la regola v2.4 (titolo intero, MAI caricata in produzione): "usa delle due parti divise da '-' la keyword meno generica, più specifica e non usata da altri post". Esempi suoi: "Rimini - Vista sulla spiaggia" → "rimini" (NON "rimini – vista sulla spiaggia"); "Antartide - Stazione McMurdo (The Observation Hill)" → "stazione mcmurdo" (NON "antartide").
@@ -236,11 +229,20 @@
 - Tie-break "vince la destra": verificato che non danneggia i casi vista-* (la generica è squalificata dal +100 ≥ 50); "Cortina d'Ampezzo - Cinque Torri" → "cinque torri" (accettabile, la dry-run consente revisione caso per caso).
 - Deploy (Luca): identico alla v2.4 — FTP del solo functions.php v2.4.1 → `?mwt_focuskw=1` (dry-run con nota e punteggi) → `?mwt_focuskw=1&go=1` → i MANUALE restano a mano; poi v2.5 pulita.
 
-
 ## 6 novembre 2026 (17) — Tema v2.5: versione pulita, keyword Yoast a mano + style.css a 2.5
 
 - Luca non è convinto delle keyword proposte dallo snippet mwt_focuskw: inserirà le frasi chiave a mano nei ~26 post senza. La generazione automatica (v2.4 titolo intero, v2.4.1 regola "parte specifica") non è MAI entrata in produzione — l'FTP di Tophost era irraggiungibile nel pomeriggio del 6/11, il deploy è stato rimandato e poi annullato.
 - v2.5 = v2.3 + nota di deploy 9 aggiornata: snippet rimosso, diff riga per riga verificato (uniche differenze: riga MWT_VERSION e nota 9), graffe bilanciate 44/44 come v2.3.
 - **Allineato l'header `Version:` di style.css da 2.0 a 2.5** (richiesta esplicita di Luca: è il numero mostrato da WordPress nella pagina Temi, wp-admin/themes.php; era fermo a 2.0 dal lavoro di chiusura del 2/11). Nessuna regola CSS toccata. README.md aggiornato di conseguenza (tema v2.1 → v2.5).
 - Deploy (Luca, quando l'FTP torna su): FTP di functions.php + style.css in wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifiche: `?ver=2.5` sul CSS nel sorgente, versione 2.5 in wp-admin/themes.php, `?mwt_focuskw=1` non risponde più.
-- Le frasi chiave mancanti restano un lavoro manuale di Luca nell'editor Yoast (nessuna scadenza); per i titoli a due parti la sua regola resta valida come guida: la parte meno generica, più specifica e non usata da altri post.
+- Le frasi chiave mancanti restano un lavoro manuale di Luca nell'editor Yoist (nessuna scadenza); per i titoli a due parti la sua regola resta valida come guida: la parte meno generica, più specifica e non usata da altri post.
+
+## 6 novembre 2026 (18) — Audit Scenari Digitali (solo analisi, nessun codice)
+
+- **Hotlink: ZERO attivi.** Via REST API di meteo-webcam.it (search=scenaridigitali) → 27 pagine con riferimenti a Scenari Digitali; ispezione post per post: nessun `<img>` attivo con src da scenaridigitali.com. La migrazione hotlink→plugin è completa per SD.
+- Residui SD nelle 27 pagine (tutti legittimi): ~21 pagine con timelapse video .mp4 (api./tl.scenaridigitali.com — da tenere, come YouTube/Panomax per convenzione); ~23 pagine con crediti "Foto: api.scenaridigitali.com" + link di cortesia a www.scenaridigitali.com/webcam/...; 3 pagine con vecchi [caption] dentro commenti HTML innocui (#9645 pretare, #7949 auronzo/monte-agudo, #842 capanna-regina-margherita ×2 — webcam già via plugin: slug pretare, agudo, margherita1, margherita2).
+- **BUG TROVATO**: post #7951 (passo-sella-dal-rifugio-salei) ha l'URL del timelapse CORROTTA: `https://api.scenaridigitali.com/media/a%20href=https://www.meteo-webcam.it/santa-cristina.../sassolungo/a/timelapse.mp4` (contiene "a href=...", probabile danno collaterale del rollout link interni del 6/11). URL corretta: `https://api.scenaridigitali.com/media/sassolungo/timelapse.mp4`. Da correggere a mano nell'editor.
+- **Copertura**: 42 webcam SD identificate, ~31 sul sito, 11 mancanti. Enumerazione NON garantita esaustiva (SD è una JS app; sitemap.xml troncato dal fetcher a 32KB e ×7 lingue; api.scenaridigitali.com blocca i bot; web.archive.org/CDX irraggiungibile). Match per nome/slug/credito.
+- **11 mancanti** (verificate una per una su scenaridigitali.com/webcam/{slug}): LIVE (candidate all'aggiunta): acquasanta-terme (Ascoli Piceno), molini-cammoro (Sellano PG), frontignano-belvedere (2ª cam di Frontignano, la base è già sul sito), bolognolaski-castelmanardo2 (2ª cam Castel Manardo, la #1 è sul sito), foligno-ite-scarpellini (PG). OFFLINE: ripatransone (dal 2020), piani-ragnolo (dal 2022), montebianco-rifugio-torino (dal 2024), monterosa-piramide-vincent, valsorda (Rifugio Monte Maggio), montealago (Nocera Umbra).
+- ~31 sul sito = 28 confermate + camposcuola/porte-berro coperte solo come timelapse sulla pagina pintura-di-bolognola (plugin slug pintura-di-bolognola e pintura-di-bolognola-2).
+- Nessuna modifica a plugin/tema in questo lavoro: nessun bump di versione. Nota tecnica: open_url tronca le risposte a 32KB e decodifica le sequenze %XX (rompe JSON.parse) → per la REST usare regex tolleranti sul raw, paginazione con per_page piccolo, _fields=id,slug,content, pattern URL ammettenti i backslash.
