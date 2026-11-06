@@ -1,3 +1,11 @@
+## v3.41 (6 novembre 2026) — evento GA4 webcam_offline via Measurement Protocol + immagine di cortesia
+
+- **Notifiche GA4 server-side (nessun tag GTM)**: al 3° fallimento consecutivo di fetch (filtro `mwp_ga_offline_threshold`, ~7 minuti dal guasto) il cron invia l'evento GA4 `webcam_offline` via Measurement Protocol con parametri `webcam_slug`, `webcam_name`, `failure_count`; quando la webcam torna online invia `webcam_online`; le webcam ancora morte mandano un promemoria al giorno (il fail marker ora conta fino a 1000 invece di 20, il backoff resta capped a 24h: oltre il count 12 ogni nuovo marker è un giorno di morte in più).
+- Configurazione in admin → "Notifiche webcam offline su Google Analytics": Measurement ID (G-…) + API secret (opzioni `mwp_ga_measurement_id` / `mwp_ga_api_secret`; l'API secret si crea in GA4: Amministrazione → Flussi dati → flusso web → Measurement Protocol). Senza entrambi: nessun evento. Pulsante "Invia evento di test webcam_offline" che valida il payload sull'endpoint debug `/debug/mp/collect` (l'endpoint normale risponde 204 anche con API secret sbagliato, quindi non verificherebbe nulla). Registrare `webcam_slug` come dimensione personalizzata evento in GA4 per vederlo nei report.
+- **Immagine di cortesia**: la webcam stantia oltre `mwp_stale_max_age` (filtro, default 86400s = 24h) è servita con un SVG "Webcam temporaneamente indisponibile" al posto dell'ultima istantanea (oltre un giorno è fuorviante); anche la webcam senza cache riceve la cortesia invece del 503 (lo shortcode ora emette l'`<img>` lo stesso invece del solo commento HTML invisibile). Lo shortcode emette `?v=off{mtime}` quando la webcam è in cortesia: URL diversa, quindi il browser non serve dalla propria cache l'immagine vecchia; alla ripresa il fetch riuscito cambia l'mtime e l'URL torna quella buona. Le anteprime admin (`?mwp_preview`) continuano a mostrare la cache reale per la diagnosi.
+- **Recupero v3.40 (bug trovato il 6/11)**: la nota "Webcam in tempo reale: l'immagine si aggiorna automaticamente." era dichiarata nella changelog v3.40 (commit 4b5f110) ma mai emessa dal codice: il filtro `mwp_refresh_note` non esisteva nel file, solo nell'header. Ora esiste davvero, sotto l'immagine e sopra il figcaption del credito, disattivabile col filtro `mwp_refresh_note` (stringa vuota; riceve `$cam`). Testo dei placeholder client-side unificato in "Webcam temporaneamente indisponibile".
+- Nota deploy: al primo giro di cron dopo l'upload, tutte le webcam già morte (fail marker ≥ soglia) sparano subito un `webcam_offline` → inventario immediato dei guasti in GA4, poi un promemoria al giorno finché non vengono sistemate.
+
 ## Tema Meteo Webcam — functions.php v2.1 (5 novembre 2026) — sitemap Yoast senza stylesheet XSLT (deprecazione XSLT nei browser)
 
 - Sintomo: aprendo /sitemap_index.xml Chrome mostra il banner "This site uses XSLT; that functionality is being removed from this browser very soon". Chrome 158 (17/11/2026) rimuove il supporto XSLT; anche Firefox e WebKit hanno annunciato la stessa intenzione. L'istruzione `<?xml-stylesheet type="text/xsl" ... main-sitemap.xsl?>` emessa da Yoast serve SOLO alla vista formattata della sitemap per gli umani: Google/Bing leggono l'XML grezzo, quindi NESSUN impatto SEO né sulla scansione.
@@ -36,12 +44,13 @@
 - Nota piccola e neutra (12.5px, grigio), sotto l'immagine e sopra l'eventuale figcaption del credito; zero impatto su CLS perché è testo che segue l'immagine già dimensionata.
 - Personalizzabile col filtro `mwp_refresh_note` (riceve `$cam`): restituire una stringa vuota per disattivarla.
 - Nessun altro cambiamento: fetch, cron, cache e admin invariati.
+- NOTA v3.41: la nota non era in realtà mai stata emessa dal codice (solo la changelog dell'header era stata aggiornata); recuperata e attivata nella v3.41.
 
 ## Tema Meteo Webcam — v1.7 (1 novembre 2026) — embed video responsive
 
 - Su mobile gli iframe YouTube incollati nei post con l'editor classico mantengono width="560" fissa e sforano la colonna del contenuto (es. /abetone-campo-scuola-e-piazzale/): add_theme_support('responsive-embeds') copre solo i blocchi Gutenberg, non usati nei post storici.
 - style.css: tutti gli iframe/object/embed del contenuto non possono superare la larghezza del contenitore (max-width: 100%); gli iframe YouTube (youtube.com / youtu.be / youtube-nocookie) diventano full-width con aspect-ratio 16:9 e height auto.
-- Header di style.css portato a Version: 1.7 e MWT_VERSION bumpato a 1.7 per il cache-bust (?ver=1.7).
+- Header di style.css portato a Version: 1.7 e MWT_VERSION bumpata a 1.7 per il cache-bust (?ver=1.7).
 
 ## Tema Meteo Webcam — functions.php v1.6 (31 ottobre 2026) — versione pulita post-conversione
 
@@ -87,7 +96,7 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 - Nessun altro cambiamento funzionale. Il file mwp-cron-debug.log esistente può essere cancellato dall'hosting.
 
 ## v3.34 (28 ottobre 2026) — backoff progressivo dei fetch falliti
-- Il log v3.33 ha mostrato che ~95 webcam morte (404/403/500/503/connessione) restavano per sempre in testa alla coda stale e bruciavano l'intero budget dei run (4 run su 5 con 0 successi, 42-78 fail l'uno).
+- Il log v3.33 ha mostrato che ~95 webcam morte (404/403/500/503/connessione) restavano per sempre in testa alla coda stale e bruciavano l'intero budget dei run (4 run su 5 con 0 successi e 42-78 fail l'uno).
 - Ora ogni fallimento consecutivo raddoppia l'attesa prima del retry: 60s, 2m, 4m, 8m, ... fino a 24h (tetto min(86400, base * 2^(count-1)), base = mwp_backoff_seconds). Il marker -fail.marker contiene il conteggio dei fallimenti consecutivi (retrocompatibile: marker vuoto pre-3.34 = 1). Al primo successo marker cancellato, contatore azzerato.
 - Helper: mwp_fail_marker_path/mwp_fail_backoff/mwp_in_backoff/mwp_mark_fail/mwp_clear_fail; cron, cold-start (mwp_ensure_full) e status endpoint usano tutti la stessa logica.
 - Il log di diagnosi resta attivo, si rimuove in v3.35 dopo verifica.
@@ -112,7 +121,7 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 
 ## v3.30 (ottobre 2026) — admin a scala 700 webcam
 - Paginazione server-side di elenco e anteprime: 10/25/50/100 per pagina (menu a tendina con frecce avanti/indietro, default 10).
-- Ordinamento per data di inserimento decrescente: nuovo campo `added` (timestamp Unix) alla creazione (form admin o import CSV); le webcam pre-3.30, senza timestamp, restano in fondo in ordine alfabetico.
+- Ordinamento per data di inserimento decrescente: nuovo campo `added` (timestamp Unix) alla creazione (form admin o import CSV); le webcam create prima della v3.30, senza timestamp, restano in fondo in ordine alfabetico.
 - Salvataggio del form riscritto a "merge per pagina": il POST contiene solo le righe visibili (marker `mwp_page_slugs[]`), eliminazione esplicita via `mwp_delete_slugs[]` (cache pulita), webcam delle altre pagine intatte. Con 100/page il POST resta sotto ~1000 variabili: `max_input_vars` non è più un limite nemmeno per la tabella.
 
 ## v3.29 (ottobre 2026) — cache busting
