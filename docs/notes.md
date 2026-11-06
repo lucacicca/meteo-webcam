@@ -130,15 +130,15 @@
 - Caveat page cache: il dataLayer è HTML cachato → nome/slug riflettono la config al momento della generazione della pagina.
 - **NOTA deploy**: FTP del solo plugin; verifica in GTM Preview: su un post webcam il primo push (Container Load) mostra webcam_slug/webcam_name; su un post senza webcam le chiavi non ci sono.
 
+
+
+
+
+
 ## 6 novembre 2026 (4) — Plugin v3.44: dataLayer di base con TUTTE le webcam della pagina
 
 - Luca chiede di tracciare tutte le webcam quando una pagina ne contiene più di una (la v3.43 portava solo la "principale", la prima).
 - **Implementazione**: il filtro `gtm4wp_compile_datalayer` ora raccoglie tutti gli shortcode `[mwp_webcam]` del contenuto (slug deduplicati in ordine) ed emette quattro chiavi: `webcam_slug`/`webcam_name` (la prima webcam, retrocompatibili) + `webcam_slugs`/`webcam_names` (lista completa separata da virgole, stringhe perché GA4 non accetta array; emesse anche con una sola webcam → schema costante).
 - **In GTM (Luca)**: variabili Data Layer `webcam_slugs`/`webcam_names`; per i report GA4 registrare `webcam_slugs` come dimensione personalizzata evento (limite ~100 caratteri: liste lunghissime vengono troncate). Per l'analisi per-singola-webcam restano `webcam_slug` e l'evento `webcam_offline` (un push per ogni webcam offline, invariato).
 - **NOTA deploy**: FTP del solo plugin; verifica in GTM Preview su un post con più webcam: Container Load mostra `webcam_slugs` con la lista completa.
-
-
-
-
-
-
+- **COLLAUDO 6/11 COMPLETATO** (Luca): v3.44 in produzione e funzionante; webcam pitigliano offline → immagine di cortesia + evento `webcam_offline` verificati in GTM/GA4; chiavi `webcam_slugs`/`webcam_names` visibili nel Container Load. Pitigliano era già nel foglio di pulizia come "da rivedere" (403 WAF/referer): da sistemare col pulsante Test/referer o da eliminare.
