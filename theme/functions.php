@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.3' ); // v2.3: rimozione snippet una-tantum mwt_link_rollout (rollout completato 6/11: 756 link). Storia v2.2.x: v2.2 mwt_link_test; v2.2.1 skip commenti HTML; v2.2.2 skip anchor = frase chiave Yoast + undo; v2.2.3 anchor alternativi; v2.2.4 rollout a lotti (764 righe)
+define( 'MWT_VERSION', '2.4' ); // v2.4: snippet una-tantum mwt_focuskw (frase chiave Yoast automatica per i post senza). Storia: v2.3 rimozione mwt_link_rollout (rollout 6/11: 756 link); v2.2.x mwt_link_test/rollout link interni; v2.1 fix XSLT sitemap
 
 /* ============ Setup ============ */
 
@@ -310,6 +310,100 @@ add_filter( 'mwp_cron_batch', function () { return 120; } );
 // con cron ogni minuto: i run si accavallerebbero (Tophost, worker limitati).
 add_filter( 'mwp_cron_time_budget', function () { return 55; } );
 
+/* ============ Yoast: frase chiave automatica per i post senza (v2.4, snippet una-tantum) ============ */
+
+/*
+ * Assegna la frase chiave Yoast ai post pubblicati che non ce l'hanno
+ * (dal censimento del 6/11: ~506 post su 532 ce l'hanno già, restano ~26).
+ *
+ * Regola scelta da Luca: frase chiave = titolo del post in minuscolo,
+ * coerente con le frasi chiave già in uso sul sito ("monte amiata",
+ * "isola del giglio", "soraga"). Solo post pubblicati: niente pagine,
+ * niente bozze.
+ *
+ * Pagina strumento (da loggati come amministratore):
+ *   ?mwt_focuskw=1        dry-run: tabella ID / titolo / frase chiave proposta
+ *   ?mwt_focuskw=1&go=1   applica con update_post_meta su _yoast_wpseo_focuskw
+ *
+ * Caratteristiche: idempotente (i post con frase chiave già impostata
+ * vengono saltati, si può rilanciare senza rischi); solo postmeta letto
+ * dall'analisi Yoast in admin → NESSUN impatto sul frontend, nessuna
+ * revisione creata, nessun flush di cache richiesto.
+ *
+ * SNIPPET TEMPORANEO: rimuovere a lavoro completato (versione pulita v2.5).
+ */
+function mwt_focuskw_fill() {
+	if ( ! isset( $_GET['mwt_focuskw'] ) ) {
+		return;
+	}
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( 'Riservato agli amministratori.' );
+	}
+
+	$go = ( isset( $_GET['go'] ) && '1' === $_GET['go'] );
+
+	$q = new WP_Query( array(
+		'post_type'              => 'post',
+		'post_status'            => 'publish',
+		'posts_per_page'         => -1,
+		'no_found_rows'          => true,
+		'update_post_term_cache' => false,
+	) );
+
+	$total   = count( $q->posts );
+	$with_kw = 0; // post che hanno già la frase chiave
+	$todo    = 0; // post senza frase chiave (candidati)
+	$applied = 0;
+	$rows    = array();
+
+	foreach ( $q->posts as $p ) {
+		$existing = (string) get_post_meta( $p->ID, '_yoast_wpseo_focuskw', true );
+		if ( '' !== trim( $existing ) ) {
+			$with_kw++;
+			continue;
+		}
+
+		// Frase chiave = titolo del post, minuscolo, spazi normalizzati.
+		$kw = trim( mb_strtolower( get_the_title( $p ) ) );
+		$kw = preg_replace( '/\s+/u', ' ', $kw );
+		if ( '' === $kw ) {
+			continue;
+		}
+
+		$todo++;
+		$rows[] = array( $p->ID, get_the_title( $p ), $kw );
+
+		if ( $go ) {
+			update_post_meta( $p->ID, '_yoast_wpseo_focuskw', $kw );
+			$applied++;
+		}
+	}
+
+	header( 'Content-Type: text/html; charset=utf-8' );
+	echo '<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>mwt_focuskw</title></head><body>';
+	echo '<h2>Yoast: frase chiave automatica (tema v2.4)</h2>';
+	echo '<p>Post pubblicati: <strong>' . intval( $total ) . '</strong> &mdash; con frase chiave gi&agrave; impostata: <strong>' . intval( $with_kw ) . '</strong> &mdash; senza: <strong>' . intval( $todo ) . '</strong>';
+	if ( $go ) {
+		echo ' &mdash; applicate ora: <strong>' . intval( $applied ) . '</strong>';
+	}
+	echo '</p>';
+	echo '<p>Modalit&agrave;: <strong>' . ( $go ? 'GO (applicato)' : 'DRY-RUN (nessuna modifica)' ) . '</strong>. Regola: frase chiave = titolo del post in minuscolo.</p>';
+	echo '<table border="1" cellpadding="6" cellspacing="0"><tr><th>ID</th><th>Titolo</th><th>Frase chiave</th></tr>';
+	foreach ( $rows as $r ) {
+		echo '<tr><td>' . intval( $r[0] ) . '</td><td>' . esc_html( $r[1] ) . '</td><td>' . esc_html( $r[2] ) . '</td></tr>';
+	}
+	echo '</table>';
+	echo '<p><a href="?mwt_focuskw=1">&larr; dry-run</a>';
+	if ( ! $go ) {
+		echo ' &nbsp; <a href="?mwt_focuskw=1&amp;go=1"><strong>APPLICA (go=1)</strong></a>';
+	}
+	echo '</p>';
+	echo '</body></html>';
+	exit;
+}
+add_action( 'template_redirect', 'mwt_focuskw_fill' );
+add_action( 'admin_init', 'mwt_focuskw_fill' );
+
 /* ============ Note per la messa in produzione ============ */
 
 /*
@@ -342,4 +436,13 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *    Il registro mwt_link_rollout_applied resta nel DB: per un eventuale undo
  *    ricaricare temporaneamente la v2.2.4 e usare ?mwt_link_rollout=1&undo=1,
  *    poi tornare alla v2.3 (l'opzione si elimina da wp_options quando non serve).
+ * 9) v2.4: snippet una-tantum mwt_focuskw — assegna la frase chiave Yoast
+ *    (titolo del post in minuscolo) ai post pubblicati che non ce l'hanno.
+ *    Deploy = FTP del solo functions.php; da loggati come admin aprire
+ *    /?mwt_focuskw=1 (dry-run: controllare la tabella) poi /?mwt_focuskw=1&go=1.
+ *    Nessun flush di cache richiesto: tocca solo il postmeta _yoast_wpseo_focuskw,
+ *    l'output delle pagine non cambia. I post con testi molto corti mostreranno
+ *    poi qualche check Yoast rosso di densità: atteso, non è un errore.
+ *    A lavoro completato rimuovere lo snippet nella versione pulita v2.5.
  */
+

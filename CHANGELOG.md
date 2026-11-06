@@ -1,3 +1,12 @@
+## Tema Meteo Webcam — functions.php v2.4 (6 novembre 2026) — Yoast: frase chiave automatica per i post senza (snippet una-tantum mwt_focuskw)
+
+- Obiettivo: assegnare una frase chiave Yoast ai post pubblicati che non ce l'hanno. Dal censimento del 6/11 ~506 post su 532 ce l'hanno già (pm.csv): restano ~26. Regola scelta da Luca: frase chiave = titolo del post in minuscolo, coerente con le frasi chiave già in uso sul sito ("monte amiata", "isola del giglio", "soraga"); solo post pubblicati, niente pagine né bozze.
+- Snippet una-tantum `mwt_focuskw_fill` (hook `template_redirect` + `admin_init`, riservato a `manage_options`): `?mwt_focuskw=1` dry-run con tabella ID/titolo/frase chiave proposta, `?mwt_focuskw=1&go=1` applica con `update_post_meta` sul postmeta `_yoast_wpseo_focuskw`. Idempotente: i post con frase chiave già impostata vengono saltati (rilanciare è sicuro).
+- Nessun impatto sul frontend: è solo postmeta letto dall'analisi Yoast in admin; nessuna revisione creata, nessun flush di cache richiesto.
+- Nota attesa: i post con testi molto corti mostreranno poi qualche check Yoast rosso (densità/keyphrase length): è il prezzo dell'analisi su testi sottili, non un errore dello snippet.
+- SNIPPET TEMPORANEO: rimuovere a lavoro completato (versione pulita v2.5). `MWT_VERSION` bumpata a 2.4.
+- Deploy: FTP del solo functions.php in wp-content/themes/meteo-webcam/ → dry-run `?mwt_focuskw=1` (revisione della lista) → `?mwt_focuskw=1&go=1` → controllo campione nell'editor di Yoast (l'analisi appare sui post nuovi). Nessun flush W3TC necessario.
+
 ## Tema Meteo Webcam — functions.php v2.3 (6 novembre 2026) — versione pulita: rimosso lo snippet mwt_link_rollout
 
 - Rollout completato in produzione il 6/11: **756 link interni** su ~370 pagine (750 registrati + 6 del test v2.2.2/v2.2.3, vedi docs/notes.md 6/11 (13)). Lo snippet una-tantum `mwt_link_rollout` della v2.2.4 (764 item nowdoc + helper + pagina admin) viene rimosso da functions.php come previsto.
@@ -262,6 +271,7 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 ## Note trasversali
 - Bug del salvataggio risolto in v3.13–v3.16: aggiungere webcam oltre la 40ª falliva — il campo credito della webcam "ostuni" conteneva ~32 MB di backslash raddoppiati a ogni salvataggio → POST da 50 MB → opzione serializzata oltre il max_allowed_packet di MySQL → update_option rifiutata in silenzio mentre l'admin mostrava comunque "Salvate N webcam".
 - Revisione CWV della v3.21: i problemi erano fetch remoto sincrono in richiesta, varianti rigenerate dal primo visitatore dopo ogni refresh, `<img>` senza dimensioni (CLS), refresh JS inefficace con srcset, placeholder assente nel frontend.
+
 
 
 
