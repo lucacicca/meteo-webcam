@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.2.2' ); // v2.2: snippet una-tantum mwt_link_test; v2.2.1: salta le occorrenze nei commenti HTML; v2.2.2: skip anchor = frase chiave Yoast (link concorrenti) + modo undo
+define( 'MWT_VERSION', '2.2.3' ); // v2.2: snippet una-tantum mwt_link_test; v2.2.1: salta le occorrenze nei commenti HTML; v2.2.2: skip anchor = frase chiave Yoast (link concorrenti) + modo undo; v2.2.3: anchor alternativi per 4 righe concorrenti
 
 /* ============ Setup ============ */
 
@@ -338,7 +338,7 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *    <?xml-stylesheet?> nel sorgente. SEO invariato: i crawler leggono l'XML.
  */
 
-/* ============ Snippet una-tantum: test link interni contestuali (v2.2 / v2.2.2) ============ */
+/* ============ Snippet una-tantum: test link interni contestuali (v2.2 / v2.2.3) ============ */
 
 /*
  * TEST del 6/11: inserisce 10 link interni contestuali (prime 10 righe del
@@ -367,18 +367,23 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  */
 
 function mwt_link_test_items() {
+	// array( post_ID, frase da linkare, slug della pagina target )
+	// v2.2.3: per le righe in cui l'anchor originale coincide con la frase
+	// chiave Yoast del post (link concorrente) si usa un anchor ALTERNATIVO:
+	// una menzione del toponimo del target trovata nel testo del post stessa,
+	// verificata libera in prosa sul dump. Le righe senza alternative valide
+	// restano con l'anchor originale e vengono saltate dal controllo Yoast.
 	return array(
-		// array( post_ID, frase da linkare, slug della pagina target )
-		array( 1546, 'Campo Imperatore', 'lago-di-campotosto' ),
-		array( 2026, 'Costa Concordia', 'isola-del-giglio-porto' ),
-		array( 2235, 'Costa Concordia', 'isola-del-giglio-porto' ),
-		array( 1662, 'Forni di Sopra', 'monte-cridola-da-laggio-di-cadore' ),
-		array( 1875, 'Santa Fiora', 'vetta-monte-amiata' ),
-		array( 2210, 'San Teodoro', 'capo-coda-cavallo-san-teodoro' ),
-		array( 625,  'stazione McMurdo', 'antartide-stazione-mcmurdo-the-observation-hill' ),
-		array( 7846, 'lago di Garda', 'sirmione-panorama-sul-lago-di-garda' ),
-		array( 8338, 'valle Aurina', 'cadipietra-klausberg-ski-arena' ),
-		array( 9443, 'Alpi Apuane', 'canevara-vista-sul-monte-grondilice-e-sul-monte-cavallo' ),
+		array( 1546, 'Campo Imperatore', 'lago-di-campotosto' ), // concorrente, nessuna menzione di Campotosto nel testo
+		array( 2026, 'isola del Giglio', 'isola-del-giglio-porto' ), // v2.2.3: era "Costa Concordia" (= frase chiave)
+		array( 2235, 'isola del Giglio', 'isola-del-giglio-porto' ), // v2.2.3: era "Costa Concordia" (= frase chiave)
+		array( 1662, 'Cridola', 'monte-cridola-da-laggio-di-cadore' ), // v2.2.3: era "Forni di Sopra" (= frase chiave)
+		array( 1875, 'Monte Amiata', 'vetta-monte-amiata' ), // v2.2.3: era "Santa Fiora" (= frase chiave)
+		array( 2210, 'San Teodoro', 'capo-coda-cavallo-san-teodoro' ), // concorrente, nessuna menzione di Capo Coda Cavallo nel testo
+		array( 625,  'stazione McMurdo', 'antartide-stazione-mcmurdo-the-observation-hill' ), // concorrente, nessuna menzione di Observation Hill nel testo
+		array( 7846, 'lago di Garda', 'sirmione-panorama-sul-lago-di-garda' ), // APPLICATO con la v2.2.2
+		array( 8338, 'valle Aurina', 'cadipietra-klausberg-ski-arena' ), // APPLICATO con la v2.2.2
+		array( 9443, 'Alpi Apuane', 'canevara-vista-sul-monte-grondilice-e-sul-monte-cavallo' ), // concorrente, nessuna menzione di Canevara/Grondilice nel testo
 	);
 }
 
