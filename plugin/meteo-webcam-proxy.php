@@ -4,7 +4,14 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.44
+ * Version: 3.45
+ * Changelog 3.45 (lightbox: click sull'immagine → pagina full):
+ *   - Nel lightbox, il click SULL'IMMAGINE aperta ora porta alla pagina
+ *     dell'immagine piena (/webcam/{slug}/full?ts=..., stessa URL con
+ *     cache-busting gia' usata per l'src dell'overlay). Prima il click
+ *     sull'immagine non faceva nulla: si chiudeva solo con ESC o clicando
+ *     sullo sfondo (comportamenti che restano invariati). Cursore
+ *     puntatore sull'immagine (zoom-out resta sullo sfondo).
  * Changelog 3.44 (dataLayer di base: TUTTE le webcam della pagina):
  *   - Estende il filtro gtm4wp_compile_datalayer della v3.43: quando un
  *     contenuto ha piu' webcam, ora vengono tracciate tutte (richiesta di
@@ -1464,7 +1471,7 @@ function mwp_lightbox_assets() {
 <style>
 .mwp-lightbox{display:block;cursor:zoom-in}
 .mwp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:99999;cursor:zoom-out;padding:2vw}
-.mwp-overlay img{max-width:96vw;max-height:96vh;width:auto;height:auto;box-shadow:0 4px 32px rgba(0,0,0,.5)}
+.mwp-overlay img{max-width:96vw;max-height:96vh;width:auto;height:auto;box-shadow:0 4px 32px rgba(0,0,0,.5);cursor:pointer}
 </style>
 <script>
 // Placeholder per webcam offline: sostituisce l'src ma NON tocca
@@ -1475,6 +1482,13 @@ window.mwpErr = function (img) {
 };
 document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('click', function (e) {
+    var ov = document.querySelector('.mwp-overlay');
+    // Click SULL'IMMAGINE dentro l'overlay (v3.45): vai alla pagina
+    // dell'immagine piena (/full), stessa URL cache-bustata gia' in src.
+    if (ov && e.target.tagName === 'IMG' && ov.contains(e.target)) {
+      window.location.href = e.target.src;
+      return;
+    }
     var a = e.target.closest('a.mwp-lightbox');
     if (a && !e.target.closest('.mwp-overlay')) {
       e.preventDefault();
@@ -1487,9 +1501,9 @@ document.addEventListener('DOMContentLoaded', function () {
       document.body.appendChild(ov);
       return;
     }
-    var ov = document.querySelector('.mwp-overlay');
-    if (ov && e.target === ov) {
-      ov.remove();
+    var ov2 = document.querySelector('.mwp-overlay');
+    if (ov2 && e.target === ov2) {
+      ov2.remove();
     }
   });
   document.addEventListener('keydown', function (e) {
@@ -2337,6 +2351,7 @@ function mwp_admin_page() {
     </script>
     <?php
 }
+
 
 
 

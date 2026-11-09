@@ -1,3 +1,11 @@
+## v3.45 (9 novembre 2026) — lightbox: click sull'immagine → pagina full
+
+- Richiesta di Luca: nel lightbox della webcam (shortcode `[mwp_webcam]`), il click SULL'IMMAGINE aperta in overlay ora porta alla pagina dell'immagine piena (`/webcam/{slug}/full?ts=...`, stessa URL cache-bustata già usata per l'src dell'overlay). Prima il click sull'immagine non faceva nulla.
+- Chiusura lightbox invariata: ESC o click sullo sfondo fuori dall'immagine.
+- CSS: cursore `pointer` sull'immagine in overlay (lo `zoom-out` resta sullo sfondo) per segnalare la navigazione.
+- Nessun altro cambiamento: fetch, cron, cache, dataLayer e admin invariati.
+- Deploy: FTP del file plugin in wp-content/plugins/ + flush page cache W3TC; verifica su una pagina webcam (aprire il lightbox → click sull'immagine → pagina full; ESC/Click fuori → chiusura).
+
 ## Tema Meteo Webcam — v2.5 (6 novembre 2026) — versione pulita: rimosso lo snippet mwt_focuskw + style.css allineato a 2.5
 
 - Luca rivede le keyword generate dallo snippet e decide di inserire le frasi chiave Yoast **a mano** nei ~26 post senza: nessuna generazione automatica. Lo snippet una-tantum `mwt_focuskw` (v2.4/v2.4.1, MAI caricate in produzione — l'FTP di Tophost era giù) viene rimosso da functions.php come da piano.
