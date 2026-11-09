@@ -3,6 +3,12 @@
 
 ## 30 ottobre 2026 — tema v1.5: conversione featured images JPEG → WebP
 
+## 9 novembre 2026
+
+(1) Plugin v3.45 (commit 8a1102f): lightbox — click SULL'IMMAGINE aperta in overlay ora porta alla pagina full (/webcam/{slug}/full?ts=..., stessa URL cache-bustata dell'src dell'overlay); chiusura con ESC/click fuori invariata; cursore pointer sull'immagine in overlay. Nessun altro cambiamento (fetch, cron, cache, dataLayer, admin). Deploy pendente: FTP del plugin in wp-content/plugins/ + flush W3TC; verifica lightbox su una pagina webcam.
+
+(2) Check settimanale "webcam più cercate" rilanciato manualmente su richiesta di Luca (oltre al run automatico del mattino): 529 pagine webcam confermate (il run automatico del mattino ne vedeva 431, artefatto di paginazione REST non riprodotto); 75 presenti / 142 mancanti / 22 viste specifiche. Top 7 invariata (abisko/stoccolma estere, rovaniemi/milano/asiago/etna presenti, marina di ragusa da aggiungere). Nuove candidate vs 7/11: caorle, deiva marina, ezzi mannu, enego, forte dei marmi; uscite: fermo, fossacesia, foppolo, gizzeria. Snapshot in Knowledge progetti-web (meteo-webcam-trends-weekly.md).
+
 - Obiettivo: alleggerire il caricamento delle pagine convertendo le immagini in evidenza da JPEG a WebP. Le immagini webcam del plugin sono già tutte WebP; questa conversione riguarda solo la Media Library (featured images).
 - Il tema le serve in due taglie: `large` nel post singolo (index.php) e `mwt-card` 640×360 nelle card di home/archivi.
 - Snippet una-tantum in functions.php v1.5 (repo GitHub, commit su main): pagina admin `?mwt_fi_webp=1` (dry-run) / `&go=1` (10 allegati per richiesta) / `&auto=1` (auto-refresh fino a fine coda) / `&reset=1`.
