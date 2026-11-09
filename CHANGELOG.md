@@ -1,3 +1,11 @@
+## v3.46 (9 novembre 2026) — pagina full con "Torna alla pagina della webcam" + tooltip
+
+- Richiesta di Luca dopo il collaudo della v3.45: una volta arrivati sull'immagine piena non c'era modo di tornare indietro se non il back del browser.
+- `/webcam/{slug}/full` aperto come **navigazione top-level** (click dal lightbox, link diretto, barra indirizzi) risponde ora con una pagina HTML minimale (dark, immagine a dimensione massima) con il link testuale **"← Torna alla pagina della webcam."** che rimanda al post/pagina con lo stesso slug (`get_page_by_path`, fallback home). Pagina `noindex`, `Cache-Control: no-store`.
+- Le richieste `<img>` della stessa URL (lightbox, embed, admin, og:image) continuano a ricevere il WebP raw: la distinzione usa l'header `Sec-Fetch-Dest: document` (tutti i browser moderni); i client che non lo mandano ricevono l'immagine come prima, zero rotture retroattive.
+- Tooltip **"Clicca per vedere l'immagine alla massima risoluzione"**: title dell'anchor della webcam nella pagina (prima "Apri a dimensione piena") e title anche sull'`<img>` aperta nel lightbox.
+- Deploy: FTP del plugin in wp-content/plugins/ + flush W3TC. Verifiche: (1) click sull'immagine nel lightbox → pagina full con link di ritorno; (2) il link riporta alla pagina webcam; (3) hover sull'immagine nel post e nel lightbox mostra il tooltip; (4) il lightbox dentro il post funziona ancora (l'<img> del lightbox non deve ricevere l'HTML: controllo visivo che l'overlay mostri l'immagine).
+
 ## v3.45 (9 novembre 2026) — lightbox: click sull'immagine → pagina full
 
 - Richiesta di Luca: nel lightbox della webcam (shortcode `[mwp_webcam]`), il click SULL'IMMAGINE aperta in overlay ora porta alla pagina dell'immagine piena (`/webcam/{slug}/full?ts=...`, stessa URL cache-bustata già usata per l'src dell'overlay). Prima il click sull'immagine non faceva nulla.

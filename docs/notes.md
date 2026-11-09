@@ -1,5 +1,7 @@
 # Note operative e casi limite
 
+AGGIORNAMENTO 9/11 (v3.46, dopo collaudo v3.45 di Luca): pagina full HTML con link "← Torna alla pagina della webcam." (navigazioni top-level su /webcam/{slug}/full, via Sec-Fetch-Dest: document; le <img> ricevono ancora il WebP raw) + tooltip "Clicca per vedere l'immagine alla massima risoluzione" sull'immagine nel post e nel lightbox. Deploy FTP pendente.
+
 
 ## 30 ottobre 2026 — tema v1.5: conversione featured images JPEG → WebP
 
