@@ -4,7 +4,22 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.46
+ * Version: 3.47
+ * Changelog 3.47 (fix: la pagina full cachava l'immagine raw):
+ *   - Sintomo (collaudo Luca, 9/11): dal lightbox il click sull'immagine
+ *     portava alla URL full, ma il link "Torna alla pagina della webcam"
+ *     compariva solo dopo Ctrl+F5. Causa: la navigazione usava la STESSA
+ *     URL (stesso ?ts=) appena scaricata come <img> dal lightbox, e quella
+ *     risposta (Cache-Control max-age 300) stava in cache browser: la
+ *     navigazione serviva la copia cachata (WebP raw) senza interrogare
+ *     il server. Il Ctrl+F5 forzava la richiesta e il server rispondeva
+ *     con la pagina HTML.
+ *   - Fix: (a) il click sul lightbox naviga con un ts NUOVO calcolato al
+ *     momento del click (URL mai richiesta prima → nessuna copia in
+ *     cache); (b) le risposte immagine di /full portano ora
+ *     Vary: Sec-Fetch-Dest, cosi' nessuna cache (browser o proxy) puo'
+ *     mescolare la risposta <img> con la risposta navigazione della
+ *     stessa URL. Le copie gia' in cache scadono da sole (max 5 minuti).
  * Changelog 3.46 (pagina full con link di ritorno + tooltip):
  *   - La URL /webcam/{slug}/full, quando viene aperta come navigazione
  *     top-level (click dal lightbox, link, barra indirizzi), risponde con
@@ -1301,6 +1316,12 @@ add_action('init', function () {
     // mentre scarica la nuova, senza mostrare buchi né attendere
     $swr = (int) apply_filters('mwp_stale_while_revalidate', 300);
     header('Cache-Control: public, max-age=' . $ttl . ', stale-while-revalidate=' . $swr);
+    // v3.47: la URL /full ha due risposte (WebP per <img>, HTML per la
+    // navigazione, scelte da Sec-Fetch-Dest): Vary impedisce alle cache
+    // di servire l'una per l'altra sulla stessa URL.
+    if ($fullwebp) {
+        header('Vary: Sec-Fetch-Dest');
+    }
     header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime($full)) . ' GMT');
 
     // Immagine piena: SEMPRE in WebP, sia da /{slug}.jpg che da /{slug}-full.webp
@@ -1507,9 +1528,12 @@ document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('click', function (e) {
     var ov = document.querySelector('.mwp-overlay');
     // Click SULL'IMMAGINE dentro l'overlay (v3.45): vai alla pagina
-    // dell'immagine piena (/full), stessa URL cache-bustata gia' in src.
+    // dell'immagine piena (/full). v3.47: ts NUOVO al momento del click,
+    // NON la src dell'<img>: e' la stessa URL appena scaricata, la sua
+    // risposta in cache browser (max-age 300) coprirebbe la navigazione
+    // servendo il WebP raw invece della pagina HTML col link di ritorno.
     if (ov && e.target.tagName === 'IMG' && ov.contains(e.target)) {
-      window.location.href = e.target.src;
+      window.location.href = e.target.src.split('?')[0] + '?ts=' + Date.now();
       return;
     }
     var a = e.target.closest('a.mwp-lightbox');

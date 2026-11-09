@@ -1,3 +1,10 @@
+## v3.47 (9 novembre 2026) — fix: la pagina full cachava l'immagine raw
+
+- Sintomo (collaudo di Luca): dal lightbox il click sull'immagine portava alla URL full, ma il link "Torna alla pagina della webcam" compariva solo dopo Ctrl+F5 (W3TC era già stato svuotato: non era la page cache).
+- Causa: la navigazione usava la stessa identica URL (stesso `?ts=`) appena scaricata come `<img>` dal lightbox; quella risposta (`Cache-Control: max-age=300`) era in cache browser, quindi la navigazione serviva la copia cachata (WebP raw) senza interrogare il server. Ctrl+F5 forzava la richiesta e il server rispondeva con la pagina HTML.
+- Fix: (a) il click nel lightbox naviga con un `ts` NUOVO calcolato al momento del click (URL mai richiesta prima, nessuna copia in cache); (b) le risposte immagine di `/webcam/{slug}/full` portano ora `Vary: Sec-Fetch-Dest`, così nessuna cache (browser o proxy) può mescolare la risposta `<img>` con quella di navigazione della stessa URL. Le vecchie copie in cache scadono da sole entro 5 minuti.
+- Deploy: FTP del plugin + flush W3TC. Verifica: aprire il lightbox, click sull'immagine → la pagina full col link deve comparire SUBITO, senza hard refresh; riprovare su 2-3 webcam diverse.
+
 ## v3.46 (9 novembre 2026) — pagina full con "Torna alla pagina della webcam" + tooltip
 
 - Richiesta di Luca dopo il collaudo della v3.45: una volta arrivati sull'immagine piena non c'era modo di tornare indietro se non il back del browser.

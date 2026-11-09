@@ -1,5 +1,7 @@
 # Note operative e casi limite
 
+AGGIORNAMENTO 9/11 (v3.47, fix dopo collaudo v3.46): la pagina full con link di ritorno compariva solo dopo Ctrl+F5 perché il click dal lightbox navigava alla STESSA URL appena scaricata come <img> (cache browser max-age 300 serviva il WebP raw). Fix: ts nuovo al momento del click + Vary: Sec-Fetch-Dest sulle risposte immagine di /full. Nota deploy di Luca: il tema v2.5 era GIÀ stato caricato giorni prima (il deploy del 6/11 annullato per FTP giù era stato recuperato dopo).
+
 AGGIORNAMENTO 9/11 (v3.46, dopo collaudo v3.45 di Luca): pagina full HTML con link "← Torna alla pagina della webcam." (navigazioni top-level su /webcam/{slug}/full, via Sec-Fetch-Dest: document; le <img> ricevono ancora il WebP raw) + tooltip "Clicca per vedere l'immagine alla massima risoluzione" sull'immagine nel post e nel lightbox. Deploy FTP pendente.
 
 
