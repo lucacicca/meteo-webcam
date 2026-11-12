@@ -4,7 +4,26 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.47
+ * Version: 3.48
+ * Changelog 3.48 (eliminata la pagina full, link di ritorno nel lightbox):
+ *   - Collaudo Luca (12/11): la pagina /full mostrava l'immagine della
+ *     STESSA dimensione del lightbox (il CSS la restringeva al viewport:
+ *     max-width:100vw/max-height:88vh) e il click non ingrandiva nulla.
+ *   - DECISIONE: eliminata la pagina HTML /full. La navigazione top-level
+ *     su /webcam/{slug}/full (Sec-Fetch-Dest: document) ora fa un redirect
+ *     302 alla pagina/post della webcam; la pagina viene cercata per
+ *     shortcode [mwp_webcam slug="..."] nel contenuto (nuovo helper
+ *     mwp_webcam_page_url), poi per path, fallback home. FIX: prima il
+ *     fallback era quasi sempre la home, perche' lo slug della webcam
+ *     (es. "colla") quasi mai coincide con lo slug del post.
+ *   - Nel lightbox il click sull'immagine NON naviga piu': chiude
+ *     l'overlay (torna alla pagina della webcam). Aggiunto il link
+ *     testuale "← Torna alla pagina della webcam" in alto a sinistra
+ *     nell'overlay, che chiude l'overlay allo stesso modo. Tooltip
+ *     aggiornati ("Clicca per ingrandire" sull'immagine nel post,
+ *     "Clicca per chiudere" sull'immagine nell'overlay).
+ *   - Le richieste <img> su /full continuano a ricevere il WebP raw
+ *     (lightbox, embed, admin, og:image): invariato.
  * Changelog 3.47 (fix: la pagina full cachava l'immagine raw):
  *   - Sintomo (collaudo Luca, 9/11): dal lightbox il click sull'immagine
  *     portava alla URL full, ma il link "Torna alla pagina della webcam"
@@ -1303,11 +1322,11 @@ add_action('init', function () {
         mwp_serve_courtesy();
     }
 
-    // v3.46: navigazione top-level sull'immagine piena (click dal lightbox,
-    // link diretto, barra indirizzi) → pagina HTML con link di ritorno
-    // "Torna alla pagina della webcam." Le richieste <img> (lightbox, embed,
-    // admin) portano Sec-Fetch-Dest: image e continuano a ricevere il WebP raw;
-    // chi non manda l'header (client vecchi) riceve l'immagine come prima.
+    // v3.48: navigazione top-level sull'immagine piena (click, link diretto,
+    // barra indirizzi) → redirect alla pagina/post della webcam (la pagina
+    // HTML /full della v3.46 e' stata eliminata). Le richieste <img>
+    // (lightbox, embed, admin) portano Sec-Fetch-Dest: image e continuano
+    // a ricevere il WebP raw; chi non manda l'header riceve l'immagine.
     if ($fullwebp && (($_SERVER['HTTP_SEC_FETCH_DEST'] ?? '') === 'document')) {
         mwp_serve_full_page($cam);
     }
@@ -1460,7 +1479,7 @@ add_shortcode('mwp_webcam', function ($atts) {
     }
 
     $html  = '<figure class="mwp-webcam">';
-    $html .= '<a href="/webcam/' . esc_attr($slug) . '/full" class="mwp-lightbox" target="_blank" rel="noopener" title="Clicca per vedere l\'immagine alla massima risoluzione">' . $img . '</a>';
+    $html .= '<a href="/webcam/' . esc_attr($slug) . '/full" class="mwp-lightbox" target="_blank" rel="noopener" title="Clicca per ingrandire l\'immagine">' . $img . '</a>';
 
     // v3.40 (recuperata in v3.41): nota standard sotto l'immagine. Testo
     // statico nel DOM: utile al lettore e leggibile dai crawler/agenti AI,
@@ -1514,8 +1533,11 @@ function mwp_lightbox_assets() {
     return <<<HTML
 <style>
 .mwp-lightbox{display:block;cursor:zoom-in}
-.mwp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:99999;cursor:zoom-out;padding:2vw}
-.mwp-overlay img{max-width:96vw;max-height:96vh;width:auto;height:auto;box-shadow:0 4px 32px rgba(0,0,0,.5);cursor:pointer}
+.mwp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;cursor:zoom-out;padding:2vw}
+.mwp-overlay img{max-width:96vw;max-height:92vh;width:auto;height:auto;box-shadow:0 4px 32px rgba(0,0,0,.5);cursor:pointer}
+.mwp-overlay .mwp-back{align-self:flex-start;margin:0 0 10px;font-size:15px}
+.mwp-overlay .mwp-back a{color:#9cf;text-decoration:none}
+.mwp-overlay .mwp-back a:hover,.mwp-overlay .mwp-back a:focus{text-decoration:underline}
 </style>
 <script>
 // Placeholder per webcam offline: sostituisce l'src ma NON tocca
@@ -1527,13 +1549,20 @@ window.mwpErr = function (img) {
 document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('click', function (e) {
     var ov = document.querySelector('.mwp-overlay');
-    // Click SULL'IMMAGINE dentro l'overlay (v3.45): vai alla pagina
-    // dell'immagine piena (/full). v3.47: ts NUOVO al momento del click,
-    // NON la src dell'<img>: e' la stessa URL appena scaricata, la sua
-    // risposta in cache browser (max-age 300) coprirebbe la navigazione
-    // servendo il WebP raw invece della pagina HTML col link di ritorno.
+    // Click SULL'IMMAGINE dentro l'overlay (v3.48): chiudi l'overlay e
+    // torna alla pagina della webcam (prima navigava alla pagina /full,
+    // eliminata in v3.48 perche' mostrava l'immagine alla stessa
+    // dimensione del lightbox).
     if (ov && e.target.tagName === 'IMG' && ov.contains(e.target)) {
-      window.location.href = e.target.src.split('?')[0] + '?ts=' + Date.now();
+      ov.remove();
+      return;
+    }
+    // Link testuale "Torna alla pagina della webcam" nell'overlay: chiude
+    // l'overlay (siamo gia' sulla pagina della webcam).
+    var back = e.target.closest('.mwp-overlay .mwp-back a');
+    if (back) {
+      e.preventDefault();
+      back.closest('.mwp-overlay').remove();
       return;
     }
     var a = e.target.closest('a.mwp-lightbox');
@@ -1541,10 +1570,17 @@ document.addEventListener('DOMContentLoaded', function () {
       e.preventDefault();
       var ov = document.createElement('div');
       ov.className = 'mwp-overlay';
+      var backP = document.createElement('p');
+      backP.className = 'mwp-back';
+      var backA = document.createElement('a');
+      backA.href = '#';
+      backA.textContent = '← Torna alla pagina della webcam';
+      backP.appendChild(backA);
+      ov.appendChild(backP);
       var img = document.createElement('img');
       img.src = a.href + (a.href.indexOf('?') > -1 ? '&' : '?') + 'ts=' + Date.now();
-      img.alt = a.title || '';
-      img.title = a.title || '';
+      img.alt = a.alt || '';
+      img.title = 'Clicca per chiudere';
       ov.appendChild(img);
       document.body.appendChild(ov);
       return;
@@ -2284,7 +2320,7 @@ function mwp_admin_page() {
             <?php foreach ($pageCams as $cam) : ?>
                 <figure style="margin:0;text-align:center"
                         class="mwp-preview">
-                    <a href="/webcam/<?php echo esc_attr($cam['slug']); ?>/full?ts=<?php echo esc_attr(time()); ?>"
+                    <a href="/webcam/<?php echo esc_attr($cam['slug']); ?>?ts=<?php echo esc_attr(time()); ?>"
                        target="_blank" rel="noopener" title="Apri a dimensione piena"
                        style="display:block">
                         <img src="/webcam/<?php echo esc_attr($cam['slug']); ?>/480?ts=<?php echo esc_attr(time()); ?>&mwp_preview=1"
@@ -2405,54 +2441,60 @@ function mwp_admin_page() {
 
 
 /**
- * v3.46: pagina HTML per l'immagine piena aperta come navigazione
- * top-level (/webcam/{slug}/full, link o click dal lightbox). Mostra
- * l'immagine a dimensione massima e un link testuale "Torna alla pagina
- * della webcam." che riporta al post/pagina con lo stesso slug (fallback:
- * home). Le richieste <img> della stessa URL non passano da qui
- * (Sec-Fetch-Dest: image) e ricevono il WebP raw.
- * Chiamata dalla route init solo quando Sec-Fetch-Dest: document.
+ * v3.48: la URL /webcam/{slug}/full aperta come navigazione top-level
+ * (click, link diretto, barra indirizzi) reindirizza alla pagina/post
+ * della webcam. La pagina HTML /full introdotta in v3.46 e' stata
+ * ELIMINATA (collaudo Luca 12/11: l'immagine era ristretta al viewport
+ * dal CSS, quindi visivamente identica al lightbox, e il click non
+ * ingrandiva nulla). Le richieste <img> della stessa URL non passano
+ * da qui (Sec-Fetch-Dest: image) e ricevono il WebP raw.
+ *
+ * Ricerca della pagina della webcam (fix del fallback home della v3.46:
+ * lo slug della webcam, es. "colla", quasi mai coincide con lo slug del
+ * post): 1) post/pagina col contenuto [mwp_webcam slug="..."], 2)
+ * post/pagina con lo stesso path, 3) home.
  */
-function mwp_serve_full_page($cam)
+function mwp_webcam_page_url($cam)
 {
     $slug = $cam['slug'] ?? '';
-    $name = $cam['name'] ?? $slug;
-    $tooltip = "Clicca per vedere l'immagine alla massima risoluzione";
 
-    // Pagina webcam corrispondente: post/pagina con lo stesso slug;
-    // se non esiste (es. webcam solo in griglia), torna alla home.
-    $back = home_url('/');
-    $page = get_page_by_path($slug, OBJECT, ['post', 'page']);
-    if ($page) {
-        $back = get_permalink($page);
+    // 1) Contenuto che incorpora la webcam via shortcode
+    if ($slug !== '') {
+        global $wpdb;
+        $like = $wpdb->esc_like($slug);
+        $pid = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT ID FROM {$wpdb->posts}
+             WHERE post_status = 'publish'
+               AND post_type IN ('post', 'page')
+               AND post_content LIKE %s
+               AND (post_content LIKE %s OR post_content LIKE %s)
+             ORDER BY post_date_gmt ASC
+             LIMIT 1",
+            '%mwp_webcam%',
+            '%slug="' . $like . '"%',
+            "%slug='" . $like . "'%"
+        ));
+        if ($pid) {
+            $url = get_permalink($pid);
+            if ($url) {
+                return $url;
+            }
+        }
     }
 
-    $imgUrl = '/webcam/' . rawurlencode($slug) . '/full?ts=' . time();
+    // 2) Post/pagina con lo stesso slug (retrocompatibilita' v3.46)
+    $page = $slug !== '' ? get_page_by_path($slug, OBJECT, ['post', 'page']) : null;
+    if ($page) {
+        return get_permalink($page);
+    }
 
-    header('Content-Type: text/html; charset=utf-8');
-    header('Cache-Control: no-store');
-    status_header(200);
-    ?>
-<!doctype html>
-<html lang="it">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex">
-<title><?php echo esc_html('Webcam ' . $name); ?></title>
-<style>
-body{margin:0;background:#111;color:#eee;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:16px;box-sizing:border-box}
-.back{margin:0 0 12px;font-size:15px}
-.back a{color:#9cf;text-decoration:none}
-.back a:hover,.back a:focus{text-decoration:underline}
-img{max-width:100vw;max-height:88vh;width:auto;height:auto;box-shadow:0 4px 32px rgba(0,0,0,.6)}
-</style>
-</head>
-<body>
-<p class="back"><a href="<?php echo esc_url($back); ?>">&larr; Torna alla pagina della webcam.</a></p>
-<img src="<?php echo esc_url($imgUrl); ?>" alt="<?php echo esc_attr('Webcam ' . $name); ?>" title="<?php echo esc_attr($tooltip); ?>">
-</body>
-</html>
-<?php
+    // 3) Fallback: home
+    return home_url('/');
+}
+
+function mwp_serve_full_page($cam)
+{
+    wp_safe_redirect(mwp_webcam_page_url($cam), 302);
     exit;
 }
+
