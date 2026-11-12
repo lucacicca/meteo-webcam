@@ -4,7 +4,15 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.48
+ * Version: 3.49
+ * Changelog 3.49 (link di ritorno nell'overlay: posizione stabile):
+ *   - Collaudo Luca (12/11): mentre l'immagine caricava (altezza 0) il
+ *     link "Torna alla pagina della webcam" restava centrato nel mezzo
+ *     dell'overlay (flex column) e poi saltava in alto quando l'immagine
+ *     appariva; inoltre risultava troppo attaccato all'immagine.
+ *   - Fix: il link e' posizionato in ABSOLUTE in alto (top:14px, tutta la
+ *     larghezza, testo centrato): posizione identica da subito, anche
+ *     mentre l'immagine carica, e distacco garantito dall'immagine.
  * Changelog 3.48 (eliminata la pagina full, link di ritorno nel lightbox):
  *   - Collaudo Luca (12/11): la pagina /full mostrava l'immagine della
  *     STESSA dimensione del lightbox (il CSS la restringeva al viewport:
@@ -1535,7 +1543,7 @@ function mwp_lightbox_assets() {
 .mwp-lightbox{display:block;cursor:zoom-in}
 .mwp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;cursor:zoom-out;padding:2vw}
 .mwp-overlay img{max-width:96vw;max-height:92vh;width:auto;height:auto;box-shadow:0 4px 32px rgba(0,0,0,.5);cursor:pointer}
-.mwp-overlay .mwp-back{align-self:flex-start;margin:0 0 10px;font-size:15px}
+.mwp-overlay .mwp-back{position:absolute;top:14px;left:0;right:0;margin:0;text-align:center;font-size:15px}
 .mwp-overlay .mwp-back a{color:#9cf;text-decoration:none}
 .mwp-overlay .mwp-back a:hover,.mwp-overlay .mwp-back a:focus{text-decoration:underline}
 </style>
