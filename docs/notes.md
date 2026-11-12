@@ -1,3 +1,7 @@
+## 12/11/2026 — plugin v3.50: rimosso il link testuale nell'overlay
+
+Decisione Luca dopo il collaudo v3.49: il link "Torna alla pagina della webcam" non serve, qualsiasi click nell'overlay chiude. Rimosso link e CSS .mwp-back; click su immagine o sfondo chiude, ESC chiude. Deploy: FTP + flush W3TC.
+
 ## 12/11/2026 — plugin v3.49: link di ritorno nell'overlay a posizione stabile
 
 Collaudo v3.48 di Luca (screenshot): mentre l'immagine caricava il link "Torna alla pagina della webcam" era centrato nel mezzo (flex column, immagine ad altezza 0) e saltava in alto all'apparire dell'immagine, troppo attaccato all'immagine. Fix v3.49: link in CSS absolute, top:14px, tutta larghezza, testo centrato — posizione stabile durante il caricamento. Deploy: FTP + flush W3TC.
