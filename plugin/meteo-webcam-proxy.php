@@ -4,7 +4,18 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.50
+ * Version: 3.51
+ * Changelog 3.51 (immagini servite con content-type text/html):
+ *   - Milanocam.it (Duomo, ParcoVergani, PortaNuova_1, CityLife_1): gli endpoint
+ *     cam_template (display_image.php e 1920x1080.php) servono il JPEG con
+ *     content-type "text/html; charset=UTF-8" (bug del sito): il plugin
+ *     scartava la risposta anche quando conteneva l'immagine valida.
+ *   - Nuovo helper mwp_body_is_image(): riconosce il formato dal contenuto
+ *     (magic bytes JPEG/PNG/GIF/WebP/BMP); una risposta text/html viene
+ *     accettata se il corpo e' un'immagine. Applicato al fetch singolo
+ *     (mwp_curl_get, pulsante Test) e al fetch parallelo del cron (curl_multi).
+ *   - URL corretta per milanocam: /_modules/cam_template/display_image.php
+ *     (quella realmente caricata dalla pagina), pid numerico, SENZA rotate=.
  * Changelog 3.50 (rimosso il link testuale nell'overlay):
  *   - Luca (12/11): il link "Torna alla pagina della webcam" non serve,
  *     qualunque click nell'overlay chiude comunque e riporta alla pagina.
@@ -703,6 +714,33 @@ function mwp_fetch($url, $refererMode = '') {
 }
 
 /**
+ * v3.51: alcuni server webcam (es. milanocam.it) dichiarano text/html per le
+ * immagini. Verifica il contenuto: true se il corpo ha i magic bytes di un
+ * formato immagine noto (JPEG, PNG, GIF, WebP, BMP).
+ */
+function mwp_body_is_image($data) {
+    if (!is_string($data) || strlen($data) < 12) {
+        return false;
+    }
+    if (strncmp($data, "\xFF\xD8\xFF", 3) === 0) { // JPEG
+        return true;
+    }
+    if (strncmp($data, "\x89PNG\r\n\x1a\n", 8) === 0) { // PNG
+        return true;
+    }
+    if (strncmp($data, 'GIF87a', 6) === 0 || strncmp($data, 'GIF89a', 6) === 0) {
+        return true;
+    }
+    if (strncmp($data, 'RIFF', 4) === 0 && substr($data, 8, 4) === 'WEBP') {
+        return true;
+    }
+    if (strncmp($data, 'BM', 2) === 0) { // BMP
+        return true;
+    }
+    return false;
+}
+
+/**
  * Esegue una singola richiesta cURL.
  * $insecure = true disattiva la verifica del certificato (per i self-signed).
  */
@@ -813,7 +851,8 @@ function mwp_curl_get($url, $ua, $referer, $insecure, $forceHttp1 = false) {
 
     $typeOk = str_starts_with($type, 'image/')
         || $type === 'application/octet-stream'
-        || $type === ''; // alcuni server webcam non dichiarano il tipo
+        || $type === '' // alcuni server webcam non dichiarano il tipo
+        || (str_starts_with($type, 'text/html') && mwp_body_is_image($data)); // v3.51
     return [
         'ok'        => $data !== false && $code >= 200 && $code < 300 && $typeOk && strlen($data) > 500,
         'data'      => $data,
@@ -893,7 +932,8 @@ function mwp_curl_multi_fetch($group, $maxWait = 30) {
         $errno = curl_errno($ch);
         $typeOk = str_starts_with($type, 'image/')
             || $type === 'application/octet-stream'
-            || $type === '';
+            || $type === ''
+            || (str_starts_with($type, 'text/html') && mwp_body_is_image($data)); // v3.51
         $ok = $data !== false && $code >= 200 && $code < 300 && $typeOk && strlen((string) $data) > 500;
         $results[$slug] = [
             'data'      => $ok ? $data : null,
@@ -2487,4 +2527,6 @@ function mwp_serve_full_page($cam)
     wp_safe_redirect(mwp_webcam_page_url($cam), 302);
     exit;
 }
+
+
 

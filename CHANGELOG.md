@@ -1,3 +1,10 @@
+## v3.51 (12 novembre 2026) — immagini servite con content-type text/html (MilanoCam)
+
+- Sintomo (Luca, 12/11): le 4 webcam di milanocam.it (Duomo, ParcoVergani, PortaNuova_1, CityLife_1) fallivano il Test dal server pur funzionando nel browser. Diagnosi con HAR del browser: la pagina carica `/_modules/cam_template/display_image.php?image_dir={dir}&image_filename={file}_1920x1080&pid={n}` e la risposta 200 dell'immagine (269 KB) arriva con **content-type "text/html; charset=UTF-8"** (bug del sito, server Aruba) → il plugin scartava la risposta per content-type anche quando conteneva il JPEG valido.
+- Fix: nuovo helper `mwp_body_is_image()` (magic bytes JPEG/PNG/GIF/WebP/BMP); una risposta `text/html` viene accettata se il corpo è un'immagine. Applicato sia al fetch singolo (mwp_curl_get, pulsante Test) sia al fetch parallelo del cron (curl_multi).
+- URL corretta per milanocam (da usare in config): `https://www.milanocam.it/_modules/cam_template/display_image.php?image_dir={dir}&image_filename={file}_1920x1080&pid=3460838727600` — pid numerico (cache-buster), SENZA `rotate=` (il parametro vuoto causa a intermittenza una pagina di errore squid). Mapping: Duomo/Duomo_1, ParcoVergani/ParcoVergani, PortaNuova_1/PortaNuova_1, CityLife_1/CityLife_1. Nota: il wrapper weserv NON è viable per questa sorgente (milanocam serve HTML anche a weserv).
+- Deploy: FTP del plugin in wp-content/plugins/ + flush W3TC; poi Test sulle 4 webcam e verifica mwp-status.
+
 ## v3.50 (12 novembre 2026) — rimosso il link testuale nell'overlay
 
 - Luca (12/11): il link "← Torna alla pagina della webcam" non serve, qualunque click nell'overlay chiude comunque e riporta alla pagina.
