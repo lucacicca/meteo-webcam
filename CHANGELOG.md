@@ -1,3 +1,9 @@
+## v3.49 (12 novembre 2026) — link di ritorno nell'overlay: posizione stabile
+
+- Collaudo Luca (12/11, screenshot): mentre l'immagine caricava (altezza 0) il link "← Torna alla pagina della webcam" restava centrato nel mezzo dell'overlay (flex column) e poi saltava in alto all'apparire dell'immagine; inoltre era troppo attaccato all'immagine.
+- Fix: il link è posizionato in CSS absolute in alto (`top:14px`, tutta la larghezza, testo centrato): posizione identica da subito, anche durante il caricamento, e distacco garantito dall'immagine.
+- Deploy: FTP del plugin + flush W3TC.
+
 ## v3.48 (12 novembre 2026) — eliminata la pagina full, link di ritorno nel lightbox
 
 - Collaudo Luca (12/11): la pagina `/full` mostrava l'immagine alla STESSA dimensione del lightbox (il CSS `max-width:100vw / max-height:88vh` la restringeva al viewport) e il click non ingrandiva nulla: la pagina non aveva motivo di esistere.
