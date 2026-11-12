@@ -1,3 +1,7 @@
+## 12/11/2026 — plugin v3.49: link di ritorno nell'overlay a posizione stabile
+
+Collaudo v3.48 di Luca (screenshot): mentre l'immagine caricava il link "Torna alla pagina della webcam" era centrato nel mezzo (flex column, immagine ad altezza 0) e saltava in alto all'apparire dell'immagine, troppo attaccato all'immagine. Fix v3.49: link in CSS absolute, top:14px, tutta larghezza, testo centrato — posizione stabile durante il caricamento. Deploy: FTP + flush W3TC.
+
 ## 12/11/2026 — plugin v3.48: eliminata la pagina full, link di ritorno nel lightbox
 
 (1) Collaudo Luca: la pagina /full (v3.46) mostrava l'immagine alla stessa dimensione del lightbox (CSS max-width/max-height al viewport) e il click non ingrandiva nulla; inoltre il link "Torna" andava quasi sempre in home (slug webcam != slug post, es. "colla" vs "passo-della-colla-di-casaglia").
