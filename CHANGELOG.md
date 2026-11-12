@@ -1,3 +1,9 @@
+## v3.50 (12 novembre 2026) — rimosso il link testuale nell'overlay
+
+- Luca (12/11): il link "← Torna alla pagina della webcam" non serve, qualunque click nell'overlay chiude comunque e riporta alla pagina.
+- Rimosso il link (introdotto in v3.48, riposizionato in v3.49) e il relativo CSS. Comportamento lightbox: click sull'immagine o sullo sfondo chiude l'overlay, ESC chiude; tooltip invariati ("Clicca per chiudere" sull'immagine in overlay).
+- Deploy: FTP del plugin + flush W3TC.
+
 ## v3.49 (12 novembre 2026) — link di ritorno nell'overlay: posizione stabile
 
 - Collaudo Luca (12/11, screenshot): mentre l'immagine caricava (altezza 0) il link "← Torna alla pagina della webcam" restava centrato nel mezzo dell'overlay (flex column) e poi saltava in alto all'apparire dell'immagine; inoltre era troppo attaccato all'immagine.
