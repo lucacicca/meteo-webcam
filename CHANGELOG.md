@@ -1,3 +1,14 @@
+## v3.48 (12 novembre 2026) — eliminata la pagina full, link di ritorno nel lightbox
+
+- Collaudo Luca (12/11): la pagina `/full` mostrava l'immagine alla STESSA dimensione del lightbox (il CSS `max-width:100vw / max-height:88vh` la restringeva al viewport) e il click non ingrandiva nulla: la pagina non aveva motivo di esistere.
+- **Eliminata la pagina HTML `/full`** (introdotta in v3.46): la navigazione top-level su `/webcam/{slug}/full` (Sec-Fetch-Dest: document) ora fa un redirect 302 alla pagina/post della webcam.
+- Nuovo helper `mwp_webcam_page_url()`: cerca la pagina per shortcode `[mwp_webcam slug="..."]` nel contenuto (query wpdb LIKE su slug con virgolette doppie o singole), poi per path (`get_page_by_path`), fallback home. **Fix del bug segnalato da Luca**: prima il fallback era quasi sempre la home, perché lo slug della webcam (es. "colla") quasi mai coincide con lo slug del post.
+- Lightbox: il click sull'immagine NON naviga più, chiude l'overlay (si torna alla pagina della webcam). Aggiunto il link testuale **"← Torna alla pagina della webcam"** in alto a sinistra nell'overlay, che chiude l'overlay allo stesso modo. ESC e click sullo sfondo invariati.
+- Tooltip aggiornati: "Clicca per ingrandire l'immagine" sull'immagine nel post, "Clicca per chiudere" sull'immagine in overlay. L'immagine in overlay occupa ora fino al 92vh (prima 96vh) per fare spazio al link.
+- Le richieste <img> su `/full` continuano a ricevere il WebP raw (lightbox, embed, admin, og:image): invariato. `Vary: Sec-Fetch-Dest` mantenuto.
+- Anteprime admin: link diretto a `/webcam/{slug}?ts=` invece di `/full?ts=`.
+- Deploy: FTP del plugin in wp-content/plugins/ + flush W3TC. Verifiche: (1) click sull'immagine nel post → lightbox col link "← Torna alla pagina della webcam"; (2) click sull'immagine nel lightbox o sul link → chiusura overlay, si resta sulla pagina; (3) ESC e click sullo sfondo chiudono; (4) aprire `/webcam/{slug}/full` direttamente → redirect alla pagina della webcam (non più home per slug senza post omonimo).
+
 ## v3.47 (9 novembre 2026) — fix: la pagina full cachava l'immagine raw
 
 - Sintomo (collaudo di Luca): dal lightbox il click sull'immagine portava alla URL full, ma il link "Torna alla pagina della webcam" compariva solo dopo Ctrl+F5 (W3TC era già stato svuotato: non era la page cache).
