@@ -4,7 +4,13 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.49
+ * Version: 3.50
+ * Changelog 3.50 (rimosso il link testuale nell'overlay):
+ *   - Luca (12/11): il link "Torna alla pagina della webcam" non serve,
+ *     qualunque click nell'overlay chiude comunque e riporta alla pagina.
+ *   - Rimosso il link (introdotto in v3.48, riposizionato in v3.49) e il
+ *     CSS .mwp-back. Comportamento: click sull'immagine o sullo sfondo
+ *     chiude l'overlay, ESC chiude; tooltip invariati.
  * Changelog 3.49 (link di ritorno nell'overlay: posizione stabile):
  *   - Collaudo Luca (12/11): mentre l'immagine caricava (altezza 0) il
  *     link "Torna alla pagina della webcam" restava centrato nel mezzo
@@ -1541,11 +1547,8 @@ function mwp_lightbox_assets() {
     return <<<HTML
 <style>
 .mwp-lightbox{display:block;cursor:zoom-in}
-.mwp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;cursor:zoom-out;padding:2vw}
-.mwp-overlay img{max-width:96vw;max-height:92vh;width:auto;height:auto;box-shadow:0 4px 32px rgba(0,0,0,.5);cursor:pointer}
-.mwp-overlay .mwp-back{position:absolute;top:14px;left:0;right:0;margin:0;text-align:center;font-size:15px}
-.mwp-overlay .mwp-back a{color:#9cf;text-decoration:none}
-.mwp-overlay .mwp-back a:hover,.mwp-overlay .mwp-back a:focus{text-decoration:underline}
+.mwp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:99999;cursor:zoom-out;padding:2vw}
+.mwp-overlay img{max-width:96vw;max-height:96vh;width:auto;height:auto;box-shadow:0 4px 32px rgba(0,0,0,.5);cursor:pointer}
 </style>
 <script>
 // Placeholder per webcam offline: sostituisce l'src ma NON tocca
@@ -1557,20 +1560,10 @@ window.mwpErr = function (img) {
 document.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('click', function (e) {
     var ov = document.querySelector('.mwp-overlay');
-    // Click SULL'IMMAGINE dentro l'overlay (v3.48): chiudi l'overlay e
-    // torna alla pagina della webcam (prima navigava alla pagina /full,
-    // eliminata in v3.48 perche' mostrava l'immagine alla stessa
-    // dimensione del lightbox).
-    if (ov && e.target.tagName === 'IMG' && ov.contains(e.target)) {
+    // Click DENTRO l'overlay (v3.50: immagine o sfondo, indistintamente):
+    // chiudi l'overlay e torna alla pagina della webcam. ESC fa lo stesso.
+    if (ov && (ov.contains(e.target) || e.target === ov)) {
       ov.remove();
-      return;
-    }
-    // Link testuale "Torna alla pagina della webcam" nell'overlay: chiude
-    // l'overlay (siamo gia' sulla pagina della webcam).
-    var back = e.target.closest('.mwp-overlay .mwp-back a');
-    if (back) {
-      e.preventDefault();
-      back.closest('.mwp-overlay').remove();
       return;
     }
     var a = e.target.closest('a.mwp-lightbox');
@@ -1578,13 +1571,6 @@ document.addEventListener('DOMContentLoaded', function () {
       e.preventDefault();
       var ov = document.createElement('div');
       ov.className = 'mwp-overlay';
-      var backP = document.createElement('p');
-      backP.className = 'mwp-back';
-      var backA = document.createElement('a');
-      backA.href = '#';
-      backA.textContent = '← Torna alla pagina della webcam';
-      backP.appendChild(backA);
-      ov.appendChild(backP);
       var img = document.createElement('img');
       img.src = a.href + (a.href.indexOf('?') > -1 ? '&' : '?') + 'ts=' + Date.now();
       img.alt = a.alt || '';
@@ -1592,10 +1578,6 @@ document.addEventListener('DOMContentLoaded', function () {
       ov.appendChild(img);
       document.body.appendChild(ov);
       return;
-    }
-    var ov2 = document.querySelector('.mwp-overlay');
-    if (ov2 && e.target === ov2) {
-      ov2.remove();
     }
   });
   document.addEventListener('keydown', function (e) {
