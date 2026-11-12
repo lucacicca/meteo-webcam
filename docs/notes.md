@@ -1,3 +1,10 @@
+## 12/11/2026 — plugin v3.48: eliminata la pagina full, link di ritorno nel lightbox
+
+(1) Collaudo Luca: la pagina /full (v3.46) mostrava l'immagine alla stessa dimensione del lightbox (CSS max-width/max-height al viewport) e il click non ingrandiva nulla; inoltre il link "Torna" andava quasi sempre in home (slug webcam != slug post, es. "colla" vs "passo-della-colla-di-casaglia").
+(2) Decisione Luca: eliminata la pagina HTML /full. Navigazione top-level su /webcam/{slug}/full = redirect 302 alla pagina della webcam, cercata per shortcode [mwp_webcam slug="..."] (wpdb LIKE, poi get_page_by_path, fallback home) — nuovo helper mwp_webcam_page_url().
+(3) Lightbox: click sull'immagine = chiude l'overlay (torna alla pagina); link testuale "← Torna alla pagina della webcam" in alto a sinistra nell'overlay (chiude l'overlay); tooltip "Clicca per ingrandire" nel post, "Clicca per chiudere" in overlay; overlay img max-height 92vh per fare spazio al link.
+(4) Invariato: richieste <img> su /full = WebP raw; Vary: Sec-Fetch-Dest; anteprime admin linkano /webcam/{slug}?ts=. Deploy: FTP plugin + flush W3TC.
+
 # Note operative e casi limite
 
 AGGIORNAMENTO 9/11 (v3.47, fix dopo collaudo v3.46): la pagina full con link di ritorno compariva solo dopo Ctrl+F5 perché il click dal lightbox navigava alla STESSA URL appena scaricata come <img> (cache browser max-age 300 serviva il WebP raw). Fix: ts nuovo al momento del click + Vary: Sec-Fetch-Dest sulle risposte immagine di /full. Nota deploy di Luca: il tema v2.5 era GIÀ stato caricato giorni prima (il deploy del 6/11 annullato per FTP giù era stato recuperato dopo).
