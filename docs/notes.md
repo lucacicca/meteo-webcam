@@ -1,3 +1,7 @@
+## 18/11/2026 (12) — Tag: rendimento in Search Console (solo lettura)
+
+16 mesi, filtro URL contenente /tag/: 124 clic (0,08% dei 156K del sito), 26,3K impressioni, CTR 0,5%, posizione 13,1; 176 tag con almeno un'impressione. Top: laguna-del-mort 95 clic (unico post: jesolo-viste-sulla-spiaggia, che cita "laguna del mort" una volta), san-foca 15 (torre-specchia-ruggeri-melendugno), tresche-conca 8 clic su 15.977 impressioni (in concorrenza col post tresche-conca), poi 0-2 clic. 639 tag: 459 con un solo post, 101 con 2, 5 vuoti; tutti index,follow (Yoast). Proposta: tag in noindex e fuori sitemap (Yoast › Impostazioni › Tassonomie › Tag), con l'OK di Luca; unico costo stimato i ~95 clic di laguna-del-mort, recuperabili rafforzando la menzione nel post di Jesolo.
+
 ## 18/11/2026 (11) — Icone Apple touch in produzione
 
 Luca ha caricato i 4 PNG di root/ in /htdocs/ e tolto le 4 regole Redirection apple-touch-icon* (restano 76 regole). Verifica da visitatore: le 4 URL rispondono 200 image/png alle dimensioni giuste (180×180 4.694 B, 120×120 5.438 B), favicon.ico invariato (200, 9.540 B).
