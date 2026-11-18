@@ -1,6 +1,7 @@
 ## 18/11/2026 (12) — Tag: rendimento in Search Console (solo lettura)
 
 16 mesi, filtro URL contenente /tag/: 124 clic (0,08% dei 156K del sito), 26,3K impressioni, CTR 0,5%, posizione 13,1; 176 tag con almeno un'impressione. Top: laguna-del-mort 95 clic (unico post: jesolo-viste-sulla-spiaggia, che cita "laguna del mort" una volta), san-foca 15 (torre-specchia-ruggeri-melendugno), tresche-conca 8 clic su 15.977 impressioni (in concorrenza col post tresche-conca), poi 0-2 clic. 639 tag: 459 con un solo post, 101 con 2, 5 vuoti; tutti index,follow (Yoast). Proposta: tag in noindex e fuori sitemap (Yoast › Impostazioni › Tassonomie › Tag), con l'OK di Luca; unico costo stimato i ~95 clic di laguna-del-mort, recuperabili rafforzando la menzione nel post di Jesolo.
+Applicato da Luca alle 17:23 (Yoast, tag fuori dai risultati). Verifica da visitatore: sitemap_index = post, page, category; post_tag-sitemap.xml 404; pagine tag 200 con robots "noindex, follow" (anche dalla page cache, rigenerata 17:23); post invariati (index). Le pagine tag usciranno dall'indice man mano che Google le riscansiona.
 
 ## 18/11/2026 (11) — Icone Apple touch in produzione
 
