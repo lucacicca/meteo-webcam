@@ -1,3 +1,7 @@
+## 18/11/2026 (16) — Controllo sitemap (solo lettura)
+
+sitemap_index = post (495 URL, tutti 200, 482 immagini, lastmod ovunque), page (6), category (46). Tutte le URL di page e category rispondono 200, nessun noindex o canonical diverso. Da sistemare (proposte a Luca): due privacy policy quasi identiche, /privacy-policy/ (2019) e /privacy-policy-2/ (11/12/2024), nessuna delle due linkata dalla home → tenere quella impostata in Impostazioni › Privacy e reindirizzare l'altra; 2 post in "Uncategorized" (passo-falzarego-rifugio-col-gallina, passo-sella-dal-rifugio-salei) da spostare nelle categorie giuste (poi la categoria esce dalla sitemap da sola); /about/ con titolo "Meteo Webcam - Meteo Webcam" e 106 parole (minore).
+
 ## 18/11/2026 (15) — Chiusura sessione Search Console
 
 Verifica finale 18:01: Gardeccia ripristinato (200, in sitemap), ciampedie e gran-sasso cestinati (redirect attivi, fuori sitemap), post-sitemap 495 URL tutti 200, gruppo "Modified Posts" vuoto. Knowledge del progetto aggiornata e divisa: documento principale `export-knowledge-meteo-webcam-per-claude.md` (stato, regole, decisioni) + appendici storiche in `claude/appendice-storia-versioni.md`, `claude/appendice-storia-versioni-2.md`, `claude/appendice-routine-trends.md`.
