@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.6' ); // v2.6: webcam precedente/successiva nel post singolo + ricerca nell'header (icona con overlay) e nel post singolo. Storia: v2.5 pulita post-mwt_focuskw; v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
+define( 'MWT_VERSION', '2.7' ); // v2.7: loading/fetchpriority solo sulla featured del post singolo + prima card eager in home; asset Contact Form 7 solo dove c'e' un modulo (/segnalazioni/). v2.6: webcam precedente/successiva nel post singolo + ricerca nell'header (icona con overlay) e nel post singolo. Storia: v2.5 pulita post-mwt_focuskw; v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
 
 /* ============ Setup ============ */
 
@@ -60,6 +60,38 @@ function mwt_adsense_resource_hints( $hints, $relation_type ) {
 	return $hints;
 }
 add_filter( 'wp_resource_hints', 'mwt_adsense_resource_hints', 10, 2 );
+
+/* ============ Contact Form 7: asset solo dove c'e' un modulo (v2.7) ============ */
+
+/*
+ * CF7 carica in OGNI pagina 4 script (hooks, i18n, swv, index) + il suo CSS,
+ * ma l'unico modulo del sito e' in /segnalazioni/. I filtri ufficiali
+ * wpcf7_load_js / wpcf7_load_css vengono letti da CF7 in wp_enqueue_scripts,
+ * quando la pagina richiesta e' gia' nota: tornano true solo dove serve.
+ * Regola generale (un eventuale modulo aggiunto altrove funziona da solo):
+ * contenuto con lo shortcode [contact-form-7] o il blocco CF7; in piu' la
+ * pagina "segnalazioni" per nome, come rete di sicurezza.
+ */
+function mwt_page_has_cf7() {
+	// Nessuna cache statica: se CF7 chiedesse prima che la query sia pronta,
+	// un "false" memorizzato bloccherebbe gli asset anche in /segnalazioni/.
+	// Prima della query (admin, REST, ajax) lasciamo il default di CF7.
+	if ( ! did_action( 'wp' ) ) {
+		return true;
+	}
+	if ( ! is_singular() ) {
+		return false;
+	}
+	$post = get_queried_object();
+	if ( ! ( $post instanceof WP_Post ) ) {
+		return false;
+	}
+	return has_shortcode( $post->post_content, 'contact-form-7' )
+		|| has_block( 'contact-form-7/contact-form-selector', $post )
+		|| 'segnalazioni' === $post->post_name;
+}
+add_filter( 'wpcf7_load_js', 'mwt_page_has_cf7' );
+add_filter( 'wpcf7_load_css', 'mwt_page_has_cf7' );
 
 /* ============ Pulizia header (leggero = meno byte) ============ */
 
@@ -172,19 +204,21 @@ function mwt_post_search() {
 }
 
 /**
- * Featured image: WordPress (>= 6.3) gestisce già loading="lazy" e
- * fetchpriority="high" sul primo contenuto immagine. Forziamo solo le
- * dimensioni esplicite per evitare CLS: vengono dal size dell'immagine,
- * nessuna magia extra necessaria.
+ * Featured image del post singolo: eager + fetchpriority high (e' above the
+ * fold, e' l'LCP). v2.7: SOLO quella. Prima il filtro forzava loading su
+ * TUTTE le immagini allegate: in home la prima card usciva con
+ * loading="lazy" insieme a fetchpriority="high" (LCP caricato in ritardo) e
+ * nei post diventavano eager anche le miniature dei Related Posts in fondo
+ * pagina. Per tutte le altre immagini decide WordPress (>= 6.3: prima
+ * immagine del contenuto eager + fetchpriority high, le altre lazy);
+ * la prima card della home la imposta index.php.
  */
 function mwt_featured_image_attrs( $attr ) {
-	// L'immagine in evidenza del post singolo è above the fold: eager.
-	if ( is_singular() ) {
-		$attr['loading'] = 'eager';
-	} else {
-		$attr['loading'] = 'lazy';
+	if ( is_singular() && isset( $attr['class'] ) && false !== strpos( $attr['class'], 'featured-img' ) ) {
+		$attr['loading']       = 'eager';
+		$attr['fetchpriority'] = 'high';
+		$attr['decoding']      = 'async';
 	}
-	$attr['decoding'] = 'async';
 	return $attr;
 }
 add_filter( 'wp_get_attachment_image_attributes', 'mwt_featured_image_attrs' );
@@ -410,4 +444,18 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *     l'overlay (click, ESC, click fuori); links precedente/successiva in fondo
  *     a una pagina webcam; form di ricerca sotto lo stesso contenuto; niente
  *     nav su pagine senza adiacenti.
+ * 11) v2.7: velocita' (audit del 18/11). (a) mwt_featured_image_attrs tocca
+ *     solo la featured del post singolo (eager + fetchpriority high); le
+ *     altre immagini le decide WordPress. index.php: la PRIMA card di home
+ *     e archivi esce eager + fetchpriority high (e' l'LCP), le altre lazy.
+ *     (b) Contact Form 7: script e CSS solo nelle pagine con un modulo
+ *     (mwt_page_has_cf7: shortcode/blocco CF7 o pagina "segnalazioni").
+ *     Deploy = FTP di functions.php + index.php + style.css in
+ *     wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifiche:
+ *     ?ver=2.7 sul CSS; in home la prima <img> della griglia ha
+ *     loading="eager" fetchpriority="high", le altre loading="lazy"; in una
+ *     pagina webcam le miniature Related Posts sono loading="lazy"; in
+ *     /segnalazioni/ il modulo invia (prova con una segnalazione di test) e
+ *     nel sorgente ci sono contact-form-7/includes/js/index.js e swv; in
+ *     home e nelle pagine webcam NON ci sono.
  */

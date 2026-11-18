@@ -9,6 +9,9 @@
  * plugin Meteo Webcam Proxy dentro the_content(): il tema non fa nulla di
  * speciale, serve solo largo e senza CLS (vedi style.css).
  *
+ * v2.7: la prima card della griglia (home/archivi) esce eager + fetchpriority
+ * high, le altre lazy.
+ *
  * v2.6: ricerca nell'header (icona lente che apre un overlay col form, ~15
  * righe di JS inline: nessun asset esterno); nel post singolo compaiono la
  * nav webcam precedente/successiva (mwt_post_nav) e il form di ricerca
@@ -132,6 +135,7 @@
 
 		<div class="cards">
 			<?php
+			$mwt_first_card = true;
 			while ( have_posts() ) :
 				the_post();
 				?>
@@ -139,8 +143,14 @@
 					<a class="card-thumb" href="<?php the_permalink(); ?>" aria-hidden="true" tabindex="-1">
 						<?php
 						if ( has_post_thumbnail() ) {
-							the_post_thumbnail( 'mwt-card' );
+							// v2.7: la prima card e' l'LCP della pagina: eager + priorita' alta.
+							// Le altre: lazy (default di WordPress).
+							the_post_thumbnail(
+								'mwt-card',
+								$mwt_first_card ? array( 'loading' => 'eager', 'fetchpriority' => 'high' ) : array( 'loading' => 'lazy' )
+							);
 						}
+						$mwt_first_card = false;
 						?>
 					</a>
 					<div class="card-body">
