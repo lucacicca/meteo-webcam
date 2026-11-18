@@ -1,3 +1,10 @@
+## MWP Fast Images — mu-plugin v1.1 (18 novembre 2026) — rigenera le varianti senza WordPress
+
+- Collaudo reale della 1.0: su 20 webcam prese a caso (pagina 3 dei post, `/webcam/{slug}/768`) **nessuna** passava dalla corsia veloce (0,5–1,2 s, tutte dal plugin). Causa: dalla v3.31 il cron scrive solo l'originale `{slug}-full.jpg` e le varianti le rigenera "pigramente" la prima richiesta; per una pagina visitata ogni tanto la variante è quasi sempre più vecchia dell'originale, e la 1.0 in quel caso passava al plugin (bootstrap completo + conversione). I test della 1.0 colpivano più volte la stessa webcam (Colla), quindi la variante era già pronta. NB: il README parlava di "warm-up delle varianti dopo ogni fetch", ma dalla v3.31 non è più così.
+- Fix: variante assente o più vecchia dell'originale → il mu-plugin la rigenera da sé (`mwpf_make_webp`: GD se ha WebP, altrimenti Imagick; qualità 82 come `mwp_webp_quality`; proporzioni mantenute; niente upscaling; scrittura atomica file temporaneo + rename) e la serve subito con `X-MWP-Fast: 1`. Stessa regola del plugin: nessuno riceve una variante più vecchia dell'originale. Se la conversione non è possibile (niente WebP, immagine illeggibile, variante più larga dell'originale) si passa al plugin come prima.
+- Collaudo locale con JPEG 1920×1080 reale e GIF 400×300: varianti 480/768/1600 e full generate e servite in corsia veloce; originale aggiornato → variante rigenerata alla richiesta successiva; 480 su originale da 400 px → plugin (come previsto); nessun file temporaneo lasciato.
+- Deploy: FTP di `mwp-fast-images.php` in `wp-content/mu-plugins/` (sovrascrive la 1.0). Nessun flush necessario. Verifica: richieste a webcam diverse e poco visitate rispondono con `X-MWP-Fast: 1`.
+
 ## v3.52 (18 novembre 2026) — lightbox: variante adatta allo schermo invece del full
 
 - Audit velocità del 18/11 (punto minore): il lightbox scaricava sempre il full WebP (Colla: ~780 KB) anche dove 1600 o 1024 bastano.

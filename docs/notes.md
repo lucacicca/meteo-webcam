@@ -1,3 +1,8 @@
+## 18/11/2026 (4) — mu-plugin MWP Fast Images v1.1: la corsia veloce ora rigenera le varianti
+
+Scoperto verificando la freschezza delle immagini per la proposta W3TC: su 20 webcam a caso 0 passavano dalla corsia veloce. Il cron (dalla v3.31) scrive solo l'originale, le varianti si rigenerano alla prima richiesta → per le pagine poco visitate la 1.0 cadeva quasi sempre sul plugin. La 1.1 rigenera la variante nel mu-plugin (GD/Imagick, q82, atomico) e la serve subito. Il README va corretto: niente warm-up delle varianti nel cron dalla v3.31.
+Verifica freschezza immagini (test dal vivo, 18/11): Chrome usa il PRIMO max-age del Cache-Control doppio (quello del plugin, = TTL), non il max-age=31536000 di nginx: dopo 602 s la stessa URL /webcam/colla/480?... è stata riscaricata dal server con un'immagine più recente (Last-Modified 13:41:22 → 13:46:56). Quindi l'età dell'HTML in cache non rende vecchia l'immagine: conta solo il TTL della webcam.
+
 ## 18/11/2026 (3) — plugin v3.52: lightbox con srcset (variante adatta allo schermo)
 
 Lightbox: srcset delle varianti + full alla larghezza reale, sizes calcolato sullo spazio effettivo (96vw o 96vh × proporzioni). Colla: telefoni e laptop 1366 → 1600 (503 KB) invece del full (781 KB); schermi grandi/retina → full come prima. CSS inline dei blocchi lasciato: il widget di ricerca a blocchi (home/archivi) usa global-styles per il pulsante, guadagno ~1–2 KB compressi. Cache-Control doppio sulle immagini: lo aggiunge nginx di Tophost, non correggibile da PHP (gia' noto dalla v3.29). Resta: Cache Preload W3TC (configurazione).
