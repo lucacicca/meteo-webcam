@@ -1,3 +1,7 @@
+## 18/11/2026 (18) — Tema v2.9 pronto, deploy da fare
+
+Sottocategorie in testa alle categorie madri (regione, zona-geografica, ambiente e ogni categoria con figlie): commit 97cf6cf. File consegnati a Luca a fine sessione (functions.php 27.026 B, index.php 7.214 B, style.css 11.943 B): NON ancora caricati. Prossima sessione: chiedere se li ha caricati, poi verifiche del CHANGELOG v2.9. Luca non vuole togliere il prefisso "Categoria:" dal titolo degli archivi.
+
 ## 18/11/2026 (17) — Pagina Chi siamo riscritta + sitemap sistemate
 
 Luca ha applicato le correzioni del controllo sitemap: /privacy-policy/ → /privacy-policy-2/ (redirect), Uncategorized fuori sitemap. Pagina /about/ (titolo "Chi siamo") riscritta col testo proposto da Claude (chi-siamo.txt): 243 parole, H2 Immagini sempre aggiornate / Come trovare una webcam / Le fonti / Segnalazioni, galleria del 2013-14 tolta, rimozione su richiesta "entro 24 ore", meta description Yoast impostata. Verifica da visitatore 18:30: 200, cache rigenerata, 5 link interni tutti 200. Proposta di testo anche nel Claude Doc "Pagina Chi siamo – proposta di testo".
