@@ -1,3 +1,14 @@
+## 18/11/2026 (9) — Check generale Search Console (solo lettura, nessun codice)
+
+- Rendimento: 156K clic e 9,02M impressioni in 16 mesi, posizione media 8,3. Il calo da fine agosto è stagionale: nel 2025 c'è lo stesso andamento (picco estivo, poi calo a settembre, picchi invernali con la neve).
+- Indicizzazione: 595 indicizzate, ~1,3K no. Crawled-not-indexed 586: quasi tutte /webcam/{slug}/full (immagini), tag, categorie, paginazione, wp-emoji js, URL con ?_gl= (linker GA); solo ~6 post veri (chamois-colle-fontana-fredda, landsort, barrea, santa-cristina, canevara, castel-di-sangro). Discovered-not-indexed 560: ~184+ tag, 20 categorie, 46 post/pagine, quasi tutti post che fanno redirect.
+- **Sitemap post-sitemap.xml: 43 URL su 539 fanno redirect** (post doppi reindirizzati da Redirection ma ancora pubblicati; es. selva-gardena → tubla..., etna-versante-est → etna, livigno-hotel-alpina → livigno-vista-sul-paese, passo-dello-stelvio-confine → passo-dello-stelvio). 21 di questi non si seguono da fetch (catena con un passaggio su un altro host/protocollo, da verificare in Redirection).
+- **Redirect error (2): /marmolada/ e /gran-vernel-sulla-marmolada/ mostrano una pagina di errore nel browser (probabile loop di redirect)**, ed entrambe sono in sitemap.
+- Sitemap index: 1.225 URL di cui 634 tag; i tag sono la maggior parte del non indicizzato.
+- robots.txt senza riga Sitemap (minore: le sitemap sono inviate in GSC).
+- Core Web Vitals: 326/326 buone su mobile e desktop. Breadcrumb: 381 validi, 0 errori. Azioni manuali: nessuna.
+- Da decidere con Luca: correzione del loop marmolada; post reindirizzati fuori dalla sitemap (bozza/cestino o noindex) come parte della sua dedup; eventuale noindex dei tag in Yoast (prima controllare se qualche tag ha impressioni).
+
 ## 18/11/2026 (8) — GSC: video non indicizzati, decisione "non intervenire" (nessun codice)
 
 Report Video di Search Console (dati al 16/11): 70 video rilevati, 19 indicizzati, 51 no, tutti con un solo motivo, "Video isn't on a watch page" (convalida avviata il 2/11, fallita il 5/11). Il video non è il contenuto principale delle pagine webcam (prima l'immagine mwp-webcam, poi l'embed YouTube o il timelapse mp4): è il comportamento previsto da Google. Confronto da visitatore tra 6 pagine indicizzate e 6 no: struttura uguale, VideoObject presente in entrambe, sorgenti miste in entrambi i gruppi → i 19 indicizzati sono casi al limite. Riguarda solo i risultati video: le pagine restano nella ricerca web. Decisione di Luca: non intervenire (niente video sopra l'immagine, niente pagine video dedicate, VideoObject lasciato) e non rilanciare la convalida. Da non riproporre.
