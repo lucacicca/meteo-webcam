@@ -1,6 +1,7 @@
 ## 18/11/2026 (5) — mu-plugin 1.2: fix HTTP 500 della 1.1 (file incompleto sul server)
 
 Dopo il deploy della 1.1 le varianti da rigenerare davano 500 "undefined function mwpf_make_webp()" (righe da 1.0: file arrivato incompleto). 1.2: avvio in fondo al file con guardia function_exists + header X-MWP-Fast = versione. display_errors attivo in produzione (il 500 mostrava il path del server): da spegnere in wp-config.
+Collaudo 1.2 in produzione (15:03): X-MWP-Fast 1.2; 60 richieste su due campioni nuovi, tutte 200 (le webcam in 500 tornate a posto). Prima richiesta di una variante da rigenerare: mediana 257 ms (768) / 593 ms (1024, conversione GD inclusa); richieste successive: mediana 97 ms. Non in corsia veloce solo le webcam con originale più stretto della variante (landsort ×3, parigi-torre-eiffel-2): il plugin serve l'originale JPEG, comportamento previsto.
 
 ## 18/11/2026 (4) — mu-plugin MWP Fast Images v1.1: la corsia veloce ora rigenera le varianti
 
