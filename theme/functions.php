@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.7' ); // v2.7: loading/fetchpriority solo sulla featured del post singolo + prima card eager in home; asset Contact Form 7 solo dove c'e' un modulo (/segnalazioni/). v2.6: webcam precedente/successiva nel post singolo + ricerca nell'header (icona con overlay) e nel post singolo. Storia: v2.5 pulita post-mwt_focuskw; v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
+define( 'MWT_VERSION', '2.7.1' ); // v2.7.1: miniature Related Posts (CRP) lazy. v2.7: loading/fetchpriority solo sulla featured del post singolo + prima card eager in home; asset Contact Form 7 solo dove c'e' un modulo (/segnalazioni/). v2.6: webcam precedente/successiva nel post singolo + ricerca nell'header (icona con overlay) e nel post singolo. Storia: v2.5 pulita post-mwt_focuskw; v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
 
 /* ============ Setup ============ */
 
@@ -222,6 +222,28 @@ function mwt_featured_image_attrs( $attr ) {
 	return $attr;
 }
 add_filter( 'wp_get_attachment_image_attributes', 'mwt_featured_image_attrs' );
+
+/**
+ * v2.7.1: miniature dei Related Posts (plugin Contextual Related Posts) in
+ * lazy. Collaudo della v2.7 (18/11): in fondo al post le miniature uscivano
+ * ancora con loading="eager" anche senza il vecchio filtro del tema: e' CRP
+ * stesso a forzarlo (WordPress le aveva gia' marcate lazy: c'e' il suo
+ * sizes="auto"). CRP aggiunge il blocco in coda a the_content: questo filtro
+ * gira per ultimo e cambia SOLO le <img> con classe crp_thumb.
+ */
+function mwt_crp_lazy_thumbs( $content ) {
+	if ( false === strpos( $content, 'crp_thumb' ) ) {
+		return $content;
+	}
+	return preg_replace_callback(
+		'#<img\b[^>]*\bcrp_thumb\b[^>]*>#i',
+		function ( $m ) {
+			return preg_replace( '#\sloading=(["\'])eager\1#i', ' loading="lazy"', $m[0] );
+		},
+		$content
+	);
+}
+add_filter( 'the_content', 'mwt_crp_lazy_thumbs', PHP_INT_MAX );
 
 /**
  * Slot per annunci/banner manuali oltre a quelli automatici di Site Kit.
@@ -458,4 +480,10 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *     /segnalazioni/ il modulo invia (prova con una segnalazione di test) e
  *     nel sorgente ci sono contact-form-7/includes/js/index.js e swv; in
  *     home e nelle pagine webcam NON ci sono.
+ * 12) v2.7.1: collaudo v2.7 OK tranne le miniature Related Posts, ancora
+ *     eager perche' le forza CRP stesso: mwt_crp_lazy_thumbs (the_content,
+ *     priorita' PHP_INT_MAX) le porta a loading="lazy" (solo <img> con classe
+ *     crp_thumb). Deploy = FTP di functions.php + style.css + flush page
+ *     cache W3TC. Verifica: ?ver=2.7.1 sul CSS e miniature CRP lazy in una
+ *     pagina webcam.
  */

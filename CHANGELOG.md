@@ -1,3 +1,10 @@
+## Tema Meteo Webcam — v2.7.1 (18 novembre 2026) — miniature Related Posts lazy
+
+- Collaudo in produzione della v2.7 (18/11, HTML anonimo dopo flush W3TC): CSS `?ver=2.7` OK; home con prima card `eager` + `fetchpriority="high"` e le altre `lazy` OK; featured del post `eager` + `high` OK; script e CSS di CF7 presenti solo in `/segnalazioni/` (assenti da home e pagina webcam) OK.
+- Unico punto non risolto: le miniature dei Related Posts in fondo al post restavano `loading="eager"`. Non era il tema: le forza il plugin Contextual Related Posts (WordPress le aveva già marcate lazy, c'è il suo `sizes="auto"`).
+- Fix: `mwt_crp_lazy_thumbs()` su `the_content` a priorità `PHP_INT_MAX` (CRP aggiunge il blocco in coda al contenuto): porta a `loading="lazy"` SOLO le `<img>` con classe `crp_thumb`.
+- `MWT_VERSION` 2.7.1, header di style.css 2.7.1. Deploy: FTP di functions.php + style.css in wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifica: `?ver=2.7.1` sul CSS e miniature CRP `lazy` in una pagina webcam.
+
 ## Tema Meteo Webcam — v2.7 (18 novembre 2026) — immagini: priorità corretta; Contact Form 7 solo dove serve
 
 - Punti 3 e 4 dell'audit velocità del 18/11.
