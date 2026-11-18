@@ -1,3 +1,11 @@
+## v3.52 (18 novembre 2026) — lightbox: variante adatta allo schermo invece del full
+
+- Audit velocità del 18/11 (punto minore): il lightbox scaricava sempre il full WebP (Colla: ~780 KB) anche dove 1600 o 1024 bastano.
+- Ora l'immagine in overlay ha `srcset` = le stesse varianti della pagina + il full alla sua larghezza reale, e `sizes` = la larghezza che occuperà davvero (96% dello schermo, oppure 96vh × proporzioni sugli schermi bassi). Il browser sceglie in base a schermo e densità: il full resta dove serve (schermi grandi/retina). Stesso cache-busting `ts` su tutte le candidate; `max-width: min(96vw, larghezza originale)` (nessun ingrandimento). Webcam senza srcset (originale piccolo): solo il full, come prima. Nessuna modifica lato server (compatibile con MWP Fast Images).
+- Prova sulla pagina di Colla (originale 1920×1080; varianti 1024 = 219 KB, 1600 = 503 KB, full = 781 KB): telefoni (iPhone 390×844 @3x, Android 412×915 @2,6x) e laptop 1366×657 → **1600 (−35%)**; schermo di Luca 1536×791 @1,25x, desktop 1920×969, retina 1440×821 @2x → full come prima (verificato dal vivo con l'overlay iniettato: scelto il full, 1350×759 mostrati).
+- Considerato e scartato: togliere il CSS inline dei blocchi (global-styles ~9 KB, block-library ~4 KB). Il contenuto dei 538 post e 5 pagine non usa classi colore/layout dei blocchi, ma il widget di ricerca a blocchi in home e archivi prende da global-styles l'aspetto del pulsante; guadagno ~1–2 KB compressi, non vale il rischio di cambi grafici.
+- Deploy: FTP del plugin in wp-content/plugins/ + flush page cache W3TC (il JS del lightbox è nell'HTML cachato). Verifica: su una pagina webcam aprire il lightbox; in DevTools > Network l'immagine richiesta è /webcam/{slug}/1600 su telefono/schermi normali, /full su schermi grandi.
+
 ## Tema Meteo Webcam — v2.7.1 (18 novembre 2026) — miniature Related Posts lazy
 
 - Collaudo in produzione della v2.7 (18/11, HTML anonimo dopo flush W3TC): CSS `?ver=2.7` OK; home con prima card `eager` + `fetchpriority="high"` e le altre `lazy` OK; featured del post `eager` + `high` OK; script e CSS di CF7 presenti solo in `/segnalazioni/` (assenti da home e pagina webcam) OK.

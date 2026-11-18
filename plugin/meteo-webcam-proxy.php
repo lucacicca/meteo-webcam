@@ -4,7 +4,18 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.51
+ * Version: 3.52
+ * Changelog 3.52 (lightbox: variante adatta allo schermo invece del full):
+ *   - Audit velocita' 18/11: il lightbox scaricava sempre il full WebP
+ *     (Colla: ~750 KB) anche su telefoni e schermi dove 1600 o 1024 bastano.
+ *   - Ora l'immagine in overlay ha srcset = le stesse varianti della pagina
+ *     + il full alla sua larghezza reale; sizes = la larghezza che l'immagine
+ *     occupera' davvero (96% dello schermo, o 96vh x proporzioni sugli schermi
+ *     bassi): il browser sceglie in base a schermo e densita' (il full resta dove serve, es. schermi
+ *     grandi/retina). Stesso cache-busting ts su tutte le varianti.
+ *     max-width min(96vw, larghezza dell'originale): nessun ingrandimento.
+ *   - Webcam senza srcset (originale piccolo): solo il full, come prima.
+ *     Nessuna modifica lato server: compatibile con MWP Fast Images.
  * Changelog 3.51 (immagini servite con content-type text/html):
  *   - Milanocam.it (Duomo, ParcoVergani, PortaNuova_1, CityLife_1): gli endpoint
  *     cam_template (display_image.php e 1920x1080.php) servono il JPEG con
@@ -1612,7 +1623,34 @@ document.addEventListener('DOMContentLoaded', function () {
       var ov = document.createElement('div');
       ov.className = 'mwp-overlay';
       var img = document.createElement('img');
-      img.src = a.href + (a.href.indexOf('?') > -1 ? '&' : '?') + 'ts=' + Date.now();
+      var ts = 'ts=' + Date.now();
+      var bust = function (u) { return u + (u.indexOf('?') > -1 ? '&' : '?') + ts; };
+      img.src = bust(a.href);
+      // v3.52: srcset come nella pagina + il full alla sua larghezza reale.
+      // Il browser sceglie la variante adatta a schermo e densita' (96vw):
+      // il full solo dove serve davvero, altrimenti 1600/1024 (meno peso
+      // su telefoni e schermi normali). Senza srcset: solo il full, come prima.
+      var inner = a.querySelector('img');
+      var set = inner && inner.getAttribute('srcset');
+      var fullW = inner ? parseInt(inner.getAttribute('width'), 10) : 0;
+      if (set && fullW > 0) {
+        var cands = set.split(',').map(function (c) {
+          var p = c.trim().split(/\s+/);
+          return bust(p[0]) + ' ' + p[1];
+        });
+        cands.push(bust(a.href) + ' ' + fullW + 'w');
+        // larghezza che l'immagine occupera' davvero: 96% dello schermo,
+        // ma su schermi bassi comanda l'altezza (96vh x proporzioni)
+        var fullH = parseInt(inner.getAttribute('height'), 10) || 0;
+        var showW = window.innerWidth * 0.96;
+        if (fullH > 0) {
+          showW = Math.min(showW, window.innerHeight * 0.96 * fullW / fullH);
+        }
+        img.sizes = Math.round(Math.min(showW, fullW)) + 'px';
+        img.srcset = cands.join(', ');
+        // mai oltre la larghezza reale dell'originale (niente ingrandimenti)
+        img.style.maxWidth = 'min(96vw, ' + fullW + 'px)';
+      }
       img.alt = a.alt || '';
       img.title = 'Clicca per chiudere';
       ov.appendChild(img);

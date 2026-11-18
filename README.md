@@ -6,7 +6,7 @@ Codice e documentazione per **meteo-webcam.it** — directory di webcam meteo.
 
 ### Plugin "Meteo Webcam Proxy"
 Plugin WordPress che integra le webcam bloccando l'hotlinking, facendo da proxy locale.
-Versione corrente: **v3.44** (6 novembre 2026, in produzione e collaudata). Il file va caricato in `wp-content/plugins/`.
+Versione corrente: **v3.52** (18 novembre 2026). Il file va caricato in `wp-content/plugins/`.
 
 ### Tema custom "Meteo Webcam"
 Tema leggero **v2.7** (novembre 2026, attivo): 3 file (`style.css`, `functions.php`, `index.php`), zero JS nel tema, template unico, featured image eager + fetchpriority, card 16:9 con `add_image_size mwt-card` 640×360, VideoObject JSON-LD per embed YouTube e player Panomax (v1.8/v1.9), fix XSLT sitemap Yoast (v2.1).
