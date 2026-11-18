@@ -1,3 +1,7 @@
+## 18/11/2026 (15) — Chiusura sessione Search Console
+
+Verifica finale 18:01: Gardeccia ripristinato (200, in sitemap), ciampedie e gran-sasso cestinati (redirect attivi, fuori sitemap), post-sitemap 495 URL tutti 200, gruppo "Modified Posts" vuoto. Knowledge del progetto aggiornata e divisa: documento principale `export-knowledge-meteo-webcam-per-claude.md` (stato, regole, decisioni) + appendici storiche in `claude/appendice-storia-versioni.md`, `claude/appendice-storia-versioni-2.md`, `claude/appendice-routine-trends.md`.
+
 ## 18/11/2026 (14) — Post reindirizzati nel cestino: verifica
 
 Luca ha cestinato i post reindirizzati. Verifica 17:55: post-sitemap 496 URL, tutti 200 tranne ciampedie-ski-area-catinaccio e gran-sasso-vista-da-fano-adriano (ancora pubblicati, RDR); i 43 indirizzi reindirizzano tutti. Nel cestino 42 post: 41 dell'elenco + post 8837 "Rifugio Gardeccia sul Catinaccio" (/rifugio-gardeccia-sul-catinaccio/), che non era nell'elenco, prima era 200 e ora dà 404 → probabile errore, da ripristinare se non voluto.
