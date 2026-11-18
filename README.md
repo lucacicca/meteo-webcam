@@ -44,6 +44,7 @@ Tema leggero **v2.8** (novembre 2026, attivo): 3 file (`style.css`, `functions.p
 ## Cache W3 Total Cache
 
 - Page cache: "Never cache the following pages" contiene `/webcam/`
+- Page cache: durata 12 h (43200 s); preload attivo da `post-sitemap.xml`, 12 pagine ogni 15 minuti (configurazione del 18/11/2026); purge automatico su modifica dei post
 - Lazy Load attivo con **Exclude Words: `mwp` + `featured-img`** — senza l'esclusione il lazy loader di W3TC annulla il cache-busting
 - Minify JS disattivo (bundle W3TC causavano "jQuery is not defined")
 
