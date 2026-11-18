@@ -1,3 +1,7 @@
+## 18/11/2026 (11) — Icone Apple touch in produzione
+
+Luca ha caricato i 4 PNG di root/ in /htdocs/ e tolto le 4 regole Redirection apple-touch-icon* (restano 76 regole). Verifica da visitatore: le 4 URL rispondono 200 image/png alle dimensioni giuste (180×180 4.694 B, 120×120 5.438 B), favicon.ico invariato (200, 9.540 B).
+
 ## 18/11/2026 (10) — Check dei redirect (plugin Redirection, export CSV di Luca: 86 regole)
 
 - Loop: regola /marmolada/ → https://www.meteo-webcam.it/marmolada/ (si rimanda a se stessa, 10.261 hit): rende irraggiungibili /marmolada/ e chi ci punta (gran-vernel-sulla-marmolada, rifugio-pian-dei-fiacconi-vista-sulla-marmolada). Fix: eliminare la regola (il post /marmolada/ è pubblicato e in sitemap).
