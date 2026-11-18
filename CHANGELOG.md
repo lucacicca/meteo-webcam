@@ -1,3 +1,13 @@
+## Tema Meteo Webcam — v2.9 (18 novembre 2026) — sottocategorie nelle categorie madri
+
+- Segnalazione di Luca: su /category/regione/, /category/zona-geografica/ e /category/ambiente/ si vedevano solo tutti i post, senza modo di scegliere la regione/zona/ambiente.
+- Nuova `mwt_subcategories()` (functions.php), chiamata da index.php sotto il titolo di ogni categoria: se la categoria ha figlie non vuote, stampa una griglia "Scegli la regione" / "Scegli la zona" / "Scegli l'ambiente" (altre categorie madri: "Sottocategorie") con card = miniatura dell'ultima webcam con immagine in evidenza (taglia mwt-card) + nome + numero di webcam (conteggio con le sotto-sottocategorie, es. alpi-orientali → dolomiti). Sotto, titolo "Tutte le webcam" e la griglia dei post come prima. Solo a pagina 1. Zero JS.
+- Dati in transient 12 h con chiave versionata (`mwt_subcats_ver`): la versione sale quando si crea/modifica/elimina una categoria o un post entra/esce da "pubblicato" (funziona anche con object cache persistente).
+- LCP: con la griglia presente, la prima miniatura delle sottocategorie è eager + fetchpriority high e le card dei post partono tutte lazy.
+- CSS `.subcats*` in style.css (griglia auto-fill 160px: 6 colonne su desktop, 2 su telefono).
+- `MWT_VERSION` 2.9, style.css `Version: 2.9`. Anteprima dal vivo (HTML/CSS iniettati solo nel browser di Claude) su /category/regione/: 20 regioni con miniatura.
+- Deploy: FTP di functions.php + index.php + style.css in wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifiche: ?ver=2.9 sul CSS; /category/regione/, /category/zona-geografica/, /category/ambiente/ mostrano la griglia; /category/zona-geografica/alpi-orientali/ mostra Dolomiti; una categoria senza figlie (es. /category/regione/abruzzo/) resta com'era; pagina 2 delle categorie madri senza griglia.
+
 ## Icone Apple touch (18 novembre 2026) — file statici in root, nessun codice
 
 - iPhone e iPad chiedono `/apple-touch-icon.png`, `-precomposed.png` e le varianti `-120x120`: finora 4 regole Redirection le mandavano alla home (~40.000 hit).

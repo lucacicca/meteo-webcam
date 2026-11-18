@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.8' ); // v2.8: lente di ricerca sulla stessa riga del menu (desktop) e in alto a destra (mobile). v2.7.1: miniature Related Posts (CRP) lazy. v2.7: loading/fetchpriority solo sulla featured del post singolo + prima card eager in home; asset Contact Form 7 solo dove c'e' un modulo (/segnalazioni/). v2.6: webcam precedente/successiva nel post singolo + ricerca nell'header (icona con overlay) e nel post singolo. Storia: v2.5 pulita post-mwt_focuskw; v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
+define( 'MWT_VERSION', '2.9' ); // v2.9: sottocategorie (card con miniatura e conteggio) in testa alle categorie che ne hanno. v2.8: lente di ricerca sulla stessa riga del menu (desktop) e in alto a destra (mobile). v2.7.1: miniature Related Posts (CRP) lazy. v2.7: loading/fetchpriority solo sulla featured del post singolo + prima card eager in home; asset Contact Form 7 solo dove c'e' un modulo (/segnalazioni/). v2.6: webcam precedente/successiva nel post singolo + ricerca nell'header (icona con overlay) e nel post singolo. Storia: v2.5 pulita post-mwt_focuskw; v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
 
 /* ============ Setup ============ */
 
@@ -202,6 +202,137 @@ function mwt_post_search() {
 	}
 	echo '<div class="post-search">' . get_search_form( false ) . '</div>';
 }
+
+/**
+ * v2.9: sottocategorie in testa alle categorie che ne hanno.
+ *
+ * Su /category/regione/, /category/zona-geografica/, /category/ambiente/ (e
+ * su ogni categoria con figli, es. alpi-orientali → dolomiti) mostra una
+ * griglia di card con le categorie figlie: nome, numero di webcam (contando
+ * anche le sotto-sottocategorie) e la miniatura dell'ultima webcam con
+ * immagine in evidenza. Solo a pagina 1; sotto restano tutte le webcam
+ * della categoria, come prima. Categorie figlie vuote: escluse.
+ *
+ * I dati (figli, conteggi, id della miniatura) stanno in un transient per
+ * 12 h, come la page cache: una pagina fredda non rifa' le query per ogni
+ * figlia. La chiave contiene una versione (opzione mwt_subcats_ver) che sale
+ * quando cambia una categoria o si pubblica/ritira un post.
+ *
+ * Ritorna true se ha stampato la griglia (index.php allora non mette la
+ * prima card dei post in eager: l'immagine sopra la piega e' qui).
+ */
+function mwt_subcategories() {
+	if ( ! is_category() || is_paged() ) {
+		return false;
+	}
+	$parent = get_queried_object();
+	if ( ! $parent instanceof WP_Term ) {
+		return false;
+	}
+
+	$key   = 'mwt_subcats_' . (int) get_option( 'mwt_subcats_ver', 1 ) . '_' . $parent->term_id;
+	$items = get_transient( $key );
+	if ( ! is_array( $items ) ) {
+		$items    = array();
+		// Tutte le categorie, poi solo le figlie dirette: pad_counts conta i
+		// post delle discendenti solo se le discendenti sono nella stessa
+		// lista (con 'parent' resterebbero fuori, es. alpi-orientali → dolomiti).
+		$all = get_terms( array(
+			'taxonomy'   => 'category',
+			'hide_empty' => false,
+			'pad_counts' => true,
+			'orderby'    => 'name',
+			'order'      => 'ASC',
+		) );
+		if ( ! is_wp_error( $all ) ) {
+			foreach ( $all as $child ) {
+				if ( (int) $child->parent !== (int) $parent->term_id || $child->count < 1 ) {
+					continue;
+				}
+				$thumb = get_posts( array(
+					'cat'                 => $child->term_id,
+					'posts_per_page'      => 1,
+					'fields'              => 'ids',
+					'no_found_rows'       => true,
+					'ignore_sticky_posts' => true,
+					'meta_key'            => '_thumbnail_id', // phpcs:ignore WordPress.DB.SlowDBQuery
+				) );
+				$items[] = array(
+					'id'    => $child->term_id,
+					'name'  => $child->name,
+					'count' => (int) $child->count,
+					'thumb' => $thumb ? (int) get_post_thumbnail_id( $thumb[0] ) : 0,
+				);
+			}
+		}
+		set_transient( $key, $items, 12 * HOUR_IN_SECONDS );
+	}
+
+	if ( ! $items ) {
+		return false;
+	}
+
+	$labels = array(
+		'regione'         => __( 'Scegli la regione', 'meteo-webcam' ),
+		'zona-geografica' => __( 'Scegli la zona', 'meteo-webcam' ),
+		'ambiente'        => __( "Scegli l'ambiente", 'meteo-webcam' ),
+	);
+	$title = isset( $labels[ $parent->slug ] ) ? $labels[ $parent->slug ] : __( 'Sottocategorie', 'meteo-webcam' );
+
+	echo '<section class="subcats" aria-labelledby="mwt-subcats-title">';
+	echo '<h2 id="mwt-subcats-title" class="subcats-title">' . esc_html( $title ) . '</h2>';
+	echo '<ul class="subcats-grid">';
+	$first = true;
+	foreach ( $items as $item ) {
+		$link = get_category_link( $item['id'] );
+		if ( ! $link ) {
+			continue;
+		}
+		echo '<li><a class="subcat" href="' . esc_url( $link ) . '">';
+		echo '<span class="subcat-thumb">';
+		if ( $item['thumb'] ) {
+			echo wp_get_attachment_image(
+				$item['thumb'],
+				'mwt-card',
+				false,
+				$first ? array( 'alt' => '', 'loading' => 'eager', 'fetchpriority' => 'high' ) : array( 'alt' => '', 'loading' => 'lazy' )
+			);
+			$first = false;
+		}
+		echo '</span>';
+		echo '<span class="subcat-name">' . esc_html( $item['name'] ) . '</span>';
+		echo '<span class="subcat-count">' . esc_html(
+			sprintf(
+				/* translators: %d: numero di webcam nella categoria */
+				_n( '%d webcam', '%d webcam', $item['count'], 'meteo-webcam' ),
+				$item['count']
+			)
+		) . '</span>';
+		echo '</a></li>';
+	}
+	echo '</ul></section>';
+	echo '<h2 class="subcats-all">' . esc_html__( 'Tutte le webcam', 'meteo-webcam' ) . '</h2>';
+	return true;
+}
+
+/**
+ * v2.9: svuota i transient delle sottocategorie quando cambiano le
+ * categorie (nuova, rinominata, spostata, eliminata) o si pubblica un post.
+ */
+function mwt_subcategories_flush() {
+	// Cambiare la versione rende vecchie tutte le chiavi: funziona anche con
+	// un object cache persistente (W3TC), dove i transient non stanno in
+	// wp_options. Le chiavi vecchie scadono da sole dopo 12 h.
+	update_option( 'mwt_subcats_ver', (int) get_option( 'mwt_subcats_ver', 1 ) + 1, false );
+}
+add_action( 'created_category', 'mwt_subcategories_flush' );
+add_action( 'edited_category', 'mwt_subcategories_flush' );
+add_action( 'delete_category', 'mwt_subcategories_flush' );
+add_action( 'transition_post_status', function ( $new, $old ) {
+	if ( 'publish' === $new || 'publish' === $old ) {
+		mwt_subcategories_flush();
+	}
+}, 10, 2 );
 
 /**
  * Featured image del post singolo: eager + fetchpriority high (e' above the

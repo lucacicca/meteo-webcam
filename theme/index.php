@@ -9,6 +9,9 @@
  * plugin Meteo Webcam Proxy dentro the_content(): il tema non fa nulla di
  * speciale, serve solo largo e senza CLS (vedi style.css).
  *
+ * v2.9: nelle categorie con sottocategorie (regione, zona geografica,
+ * ambiente...) compare prima la griglia delle figlie (mwt_subcategories).
+ *
  * v2.7: la prima card della griglia (home/archivi) esce eager + fetchpriority
  * high, le altre lazy.
  *
@@ -133,9 +136,15 @@
 			?>
 		</h1>
 
+		<?php
+		// v2.9: nelle categorie con figli, prima la griglia delle sottocategorie.
+		// Se c'e', l'immagine sopra la piega e' li': i post partono tutti lazy.
+		$mwt_has_subcats = mwt_subcategories();
+		?>
+
 		<div class="cards">
 			<?php
-			$mwt_first_card = true;
+			$mwt_first_card = ! $mwt_has_subcats;
 			while ( have_posts() ) :
 				the_post();
 				?>
