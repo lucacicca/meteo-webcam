@@ -1,3 +1,10 @@
+## Tema Meteo Webcam — v2.8 (18 novembre 2026) — lente di ricerca sulla stessa riga del menu
+
+- Segnalazione di Luca (screenshot da telefono + desktop): l'icona di ricerca della v2.6 andava a capo sotto le voci di menu, anche su schermi grandi. Causa: `.site-nav` era un blocco, quindi `<ul>` del menu e pulsante `.search-toggle` stavano uno sotto l'altro.
+- Fix solo CSS: `.site-nav` diventa flex (menu e lente sulla stessa riga, allineati al centro). Sotto i 640px: titolo centrato, lente in alto a destra (position absolute dentro l'header), voci di menu su una riga sotto il titolo (0.9rem, gap 14px). Valutato l'hamburger: con 3 voci di menu non serve, e avrebbe richiesto altro JS.
+- Anteprima dal vivo (CSS iniettato solo nel browser di Claude, sito non toccato): desktop 1523px tutto su una riga; riquadri da 390 e 360px (scrollbar inclusa) con menu su una riga sola e lente accanto al titolo; header mobile più basso (77px).
+- `MWT_VERSION` 2.8, header di style.css 2.8. Deploy: FTP di style.css + functions.php in wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifiche: `?ver=2.8` sul CSS; desktop e telefono come sopra; la lente apre ancora l'overlay di ricerca (click, ESC, click fuori).
+
 ## MWP Fast Images — mu-plugin v1.2 (18 novembre 2026) — fix HTTP 500 dopo il deploy della 1.1
 
 - Collaudo della 1.1 in produzione: le webcam con variante da rigenerare (0/20 su un campione nuovo, 10/20 su quello già scaldato) rispondevano **HTTP 500** "Call to undefined function mwpf_make_webp()" (mwp-fast-images.php:130, chiamata da riga 48). I numeri di riga corrispondono alla struttura della 1.0 senza le 14 righe aggiunte dalla 1.1: sul server era arrivato un file incompleto. Luca ha rimosso il file per ripristinare il comportamento del plugin.

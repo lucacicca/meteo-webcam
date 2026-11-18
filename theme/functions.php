@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.7.1' ); // v2.7.1: miniature Related Posts (CRP) lazy. v2.7: loading/fetchpriority solo sulla featured del post singolo + prima card eager in home; asset Contact Form 7 solo dove c'e' un modulo (/segnalazioni/). v2.6: webcam precedente/successiva nel post singolo + ricerca nell'header (icona con overlay) e nel post singolo. Storia: v2.5 pulita post-mwt_focuskw; v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
+define( 'MWT_VERSION', '2.8' ); // v2.8: lente di ricerca sulla stessa riga del menu (desktop) e in alto a destra (mobile). v2.7.1: miniature Related Posts (CRP) lazy. v2.7: loading/fetchpriority solo sulla featured del post singolo + prima card eager in home; asset Contact Form 7 solo dove c'e' un modulo (/segnalazioni/). v2.6: webcam precedente/successiva nel post singolo + ricerca nell'header (icona con overlay) e nel post singolo. Storia: v2.5 pulita post-mwt_focuskw; v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
 
 /* ============ Setup ============ */
 
@@ -486,4 +486,14 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *     crp_thumb). Deploy = FTP di functions.php + style.css + flush page
  *     cache W3TC. Verifica: ?ver=2.7.1 sul CSS e miniature CRP lazy in una
  *     pagina webcam.
+ * 13) v2.8: header. La lente di ricerca andava a capo sotto le voci di menu,
+ *     anche su desktop (.site-nav era un blocco: <ul> e pulsante uno sotto
+ *     l'altro). Ora .site-nav e' flex: menu e lente sulla stessa riga. Sotto
+ *     i 640px: titolo centrato, lente in alto a destra (position absolute
+ *     nell'header), voci di menu su una riga sotto il titolo (0.9rem, gap
+ *     14px). Solo CSS, nessun hamburger (3 voci di menu: non serve).
+ *     Deploy = FTP di style.css + functions.php + flush page cache W3TC.
+ *     Verifiche: desktop tutto su una riga; telefono: lente in alto a
+ *     destra accanto al titolo, menu su una riga; la lente apre ancora
+ *     l'overlay di ricerca.
  */

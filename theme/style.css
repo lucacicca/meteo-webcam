@@ -3,7 +3,7 @@ Theme Name: Meteo Webcam
 Theme URI: https://www.meteo-webcam.it
 Author: Luca Ciccarelli
 Description: Tema leggero per directory di webcam meteo e blog di viaggio: home a griglia di card 16:9, articolo singolo con immagine in evidenza e webcam live servite dal plugin Meteo Webcam Proxy. Zero JavaScript nel tema, un solo foglio di stile, nessuna richiesta esterna. Compatibile con Google Site Kit / AdSense.
-Version: 2.7.1
+Version: 2.8
 Requires at least: 6.0
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -74,7 +74,8 @@ a:hover, a:focus { color: var(--accent-dark); text-decoration: underline; }
   letter-spacing: -0.01em;
 }
 
-.site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 18px; flex-wrap: wrap; }
+.site-nav { display: flex; align-items: center; gap: 18px; } /* v2.8: menu e lente sulla stessa riga */
+.site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
 .site-nav a { color: var(--text-soft); font-size: 0.95rem; font-weight: 500; }
 
 /* ============ Ricerca nell'header (v2.6) ============ */
@@ -324,6 +325,12 @@ a:hover, a:focus { color: var(--accent-dark); text-decoration: underline; }
 @media (max-width: 640px) {
   body { font-size: 16px; }
   .post-title { font-size: 1.45rem; }
-  .site-header-inner { justify-content: center; }
+  /* v2.8: titolo centrato in alto, lente in alto a destra, voci di menu
+     su una riga sotto il titolo (testo un po' piu' compatto) */
+  .site-header-inner { justify-content: center; position: relative; row-gap: 4px; }
+  .site-nav { position: static; }
+  .site-nav ul { justify-content: center; gap: 4px 14px; }
+  .site-nav a { font-size: 0.9rem; }
+  .search-toggle { position: absolute; top: 8px; right: 16px; }
   .post-nav a { flex: 1 1 auto; }
 }
