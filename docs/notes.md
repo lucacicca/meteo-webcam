@@ -1,3 +1,7 @@
+## 18/11/2026 (19) — Tema v2.9 in produzione e collaudato
+
+Luca ha caricato i 3 file alle 19:00. Verifica da visitatore: ?ver=2.9; /category/regione/ "Scegli la regione" 20 card, /category/zona-geografica/ "Scegli la zona" 8 (Alpi Orientali 110 = conteggio con Dolomiti), /category/ambiente/ "Scegli l'ambiente" 9, alpi-orientali → "Sottocategorie" con Dolomiti (48); tutte con miniatura, la prima eager/high; abruzzo, pagina 2 e home senza griglia (prima card eager/high come prima); nessun errore PHP. Nota: sulla parola "webcam" di "Tutte le webcam" AdSense aggiunge un link con icona (classe google-anno, annotazioni di ricerca delle Auto ads): non è del tema, si disattiva dalle impostazioni Auto ads di AdSense.
+
 ## 18/11/2026 (18) — Tema v2.9 pronto, deploy da fare
 
 Sottocategorie in testa alle categorie madri (regione, zona-geografica, ambiente e ogni categoria con figlie): commit 97cf6cf. File consegnati a Luca a fine sessione (functions.php 27.026 B, index.php 7.214 B, style.css 11.943 B): NON ancora caricati. Prossima sessione: chiedere se li ha caricati, poi verifiche del CHANGELOG v2.9. Luca non vuole togliere il prefisso "Categoria:" dal titolo degli archivi.
