@@ -1,3 +1,7 @@
+## 18/11/2026 (17) — Pagina Chi siamo riscritta + sitemap sistemate
+
+Luca ha applicato le correzioni del controllo sitemap: /privacy-policy/ → /privacy-policy-2/ (redirect), Uncategorized fuori sitemap. Pagina /about/ (titolo "Chi siamo") riscritta col testo proposto da Claude (chi-siamo.txt): 243 parole, H2 Immagini sempre aggiornate / Come trovare una webcam / Le fonti / Segnalazioni, galleria del 2013-14 tolta, rimozione su richiesta "entro 24 ore", meta description Yoast impostata. Verifica da visitatore 18:30: 200, cache rigenerata, 5 link interni tutti 200. Proposta di testo anche nel Claude Doc "Pagina Chi siamo – proposta di testo".
+
 ## 18/11/2026 (16) — Controllo sitemap (solo lettura)
 
 sitemap_index = post (495 URL, tutti 200, 482 immagini, lastmod ovunque), page (6), category (46). Tutte le URL di page e category rispondono 200, nessun noindex o canonical diverso. Da sistemare (proposte a Luca): due privacy policy quasi identiche, /privacy-policy/ (2019) e /privacy-policy-2/ (11/12/2024), nessuna delle due linkata dalla home → tenere quella impostata in Impostazioni › Privacy e reindirizzare l'altra; 2 post in "Uncategorized" (passo-falzarego-rifugio-col-gallina, passo-sella-dal-rifugio-salei) da spostare nelle categorie giuste (poi la categoria esce dalla sitemap da sola); /about/ con titolo "Meteo Webcam - Meteo Webcam" e 106 parole (minore).
