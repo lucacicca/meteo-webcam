@@ -1,3 +1,8 @@
+## 18/11/2026 — mu-plugin MWP Fast Images v1.0: corsia veloce per le immagini webcam
+
+Audit velocità del 18/11 (codice + misure dal browser come visitatore anonimo). Problema n.1: ogni immagine /webcam/... passava dal bootstrap completo di WordPress → 650–1300 ms contro ~90 ms del file statico (stesso WebP colla-768). Fix: `plugin/mu-plugins/mwp-fast-images.php` in wp-content/mu-plugins/, serve la variante già pronta prima dei plugin normali; ogni caso non ordinario prosegue verso il plugin (cold-start, cortesia >24h, varianti da rigenerare, /full in navigazione, ?mwp_preview, mwp-status, 404). Header come il plugin + Content-Length + 304 + `X-MWP-Fast: 1`. Costanti allineate ai default del plugin (sizes, 24h, swr 300): da aggiornare se si aggiungono quei filtri. Plugin MWP invariato (v3.51).
+Altri punti emersi dall'audit, ancora da fare: (2) cache pagine W3TC spesso fredda (miss 0,8–1,2 s, hit 80 ms) → attivare Cache Preload da sitemap e rivedere durata/regole di svuotamento; (3) tema: mwt_featured_image_attrs forza loading su tutte le immagini (home: prima card lazy+fetchpriority high; post: miniature Related Posts eager) → eager solo sulla featured; (4) CF7 (4 JS + CSS) e tracker form GTM4WP caricati in ogni pagina → solo sulla pagina segnalazioni; (5) shortcode: sizes "1024px" ma colonna 740px → il desktop scarica la variante 1024; minori: ~16 KB CSS inline dei blocchi (global-styles/block-library: i remove_action del tema non funzionano più), lightbox sul full da ~800 KB (Colla), Cache-Control doppio (max-age del plugin + max-age=31536000 di nginx) sulle immagini.
+
 ## 18/11/2026 — tema v2.6: webcam precedente/successiva + ricerca nell'header (overlay) e nel post singolo
 
 Tre richieste di Luca, tutte sul tema:

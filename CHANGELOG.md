@@ -1,3 +1,14 @@
+## MWP Fast Images — mu-plugin v1.0 (18 novembre 2026) — corsia veloce per le immagini webcam
+
+- Misura del 18/11 (visitatore anonimo): lo stesso WebP rispondeva in **650–1300 ms** via `/webcam/colla/768` (ogni immagine avvia WordPress completo: Yoast, Site Kit, CF7, GTM4WP, W3TC, tema) contro **~90 ms** come file statico in `uploads/mwp-cache/`. Il costo si ripete per ogni webcam della pagina, per ogni apertura del lightbox e per ogni ciclo del refresh automatico (`refresh=`).
+- Nuovo file `plugin/mu-plugins/mwp-fast-images.php` da caricare in `wp-content/mu-plugins/`: i must-use plugin partono prima dei plugin normali, quindi nel caso normale la variante WebP già pronta viene servita senza caricare plugin e tema.
+- Corsia veloce SOLO se: GET/HEAD, percorso immagine del plugin (nuovi e vecchi), webcam presente in `mwp_webcams`, plugin MWP attivo, originale `{slug}-full.jpg` presente e con meno di 24h, variante WebP presente e non più vecchia dell'originale. Altrimenti la richiesta prosegue e la gestisce il plugin come prima: cold-start, immagine di cortesia, rigenerazione varianti, redirect di `/full` aperto come pagina (Sec-Fetch-Dest: document), anteprime admin `?mwp_preview`, `mwp-status`, 404.
+- Header identici al plugin (Cache-Control `max-age` = TTL webcam + `stale-while-revalidate=300`, `Last-Modified` = mtime dell'originale, `Vary: Sec-Fetch-Dest` su `/full` e `-full.webp`), più `Content-Length`, risposta **304** a If-Modified-Since e **`X-MWP-Fast: 1`** per verificare che la corsia sia attiva.
+- Allineamento: nel mu-plugin i filtri del tema non esistono ancora, valgono i default del plugin (larghezze 480/768/1024/1600, soglia cortesia 24h, swr 300, TTL default 300/min 30). Se in futuro si aggiunge `mwp_sizes`, `mwp_stale_max_age` o `mwp_stale_while_revalidate`, aggiornare anche le costanti del mu-plugin.
+- Plugin MWP **invariato** (resta v3.51): nessun bump del plugin, nessuna modifica all'HTML delle pagine → nessun flush W3TC necessario.
+- Collaudo locale (server PHP con WordPress simulato): 19 casi, tutti come atteso (varianti e full serviti con X-MWP-Fast; fallthrough su variante mancante/vecchia, originale >24h, slug sconosciuto, larghezza non valida, /full in navigazione, ?mwp_preview, mwp-status, POST, plugin disattivato; 304 con If-Modified-Since).
+- Deploy: FTP di `mwp-fast-images.php` in `wp-content/mu-plugins/` (creare la cartella se non esiste). Verifiche: in DevTools > Network una pagina webcam → le richieste `/webcam/{slug}/{w}` hanno `X-MWP-Fast: 1` e tempi ~100–200 ms; `/webcam/{slug}/full` aperto nella barra indirizzi → ancora redirect alla pagina della webcam; `mwp-status` e pulsante "Test" invariati. Rollback: cancellare il file.
+
 ## Tema Meteo Webcam — v2.6 (18 novembre 2026) — webcam precedente/successiva + ricerca nell'header (overlay) e nel post singolo
 
 - Tre richieste di Luca sul tema:
