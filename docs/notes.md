@@ -1,3 +1,7 @@
+## 18/11/2026 (14) — Post reindirizzati nel cestino: verifica
+
+Luca ha cestinato i post reindirizzati. Verifica 17:55: post-sitemap 496 URL, tutti 200 tranne ciampedie-ski-area-catinaccio e gran-sasso-vista-da-fano-adriano (ancora pubblicati, RDR); i 43 indirizzi reindirizzano tutti. Nel cestino 42 post: 41 dell'elenco + post 8837 "Rifugio Gardeccia sul Catinaccio" (/rifugio-gardeccia-sul-catinaccio/), che non era nell'elenco, prima era 200 e ora dà 404 → probabile errore, da ripristinare se non voluto.
+
 ## 18/11/2026 (13) — Home redirect, post reindirizzati in sitemap, robots.txt
 
 - Le 5 pagine reindirizzate alla home restano così (decisione di Luca: non ci sono webcam analoghe). Non riproporre.
