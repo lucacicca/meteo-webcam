@@ -1,3 +1,11 @@
+## 18/11/2026 — tema v2.6: webcam precedente/successiva + ricerca nell'header (overlay) e nel post singolo
+
+Tre richieste di Luca, tutte sul tema:
+1. Prev/next nel post singolo: `mwt_post_nav()` con get_previous_post(true)/get_next_post(true) (stessa categoria) etichettate "‹ Webcam precedente: …" / "Webcam successiva: … ›"; CSS .post-nav; assente sui post senza adiacenti.
+2. Ricerca nel post singolo: `mwt_post_search()` — form .post-search sotto il contenuto.
+3. Ricerca nell'header: pulsante icona lente (SVG inline) nella nav che apre overlay .search-overlay fixed in alto col form; focus automatico, chiusura con ESC/click fuori/re-click; aria-expanded. ~15 righe di JS inline in index.php (unica eccezione alla filosofia zero-JS, nessun asset esterno).
+MWT_VERSION 2.6, style.css Version 2.6, CHANGELOG aggiornato. Commit afb590e su main. Deploy: FTP di functions.php + style.css + index.php in wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifiche: ?ver=2.6 sul CSS, aprire/chiudere l'overlay (click, ESC, click fuori), prev/next in fondo a una pagina webcam, form di ricerca nello stesso punto.
+
 ## 12/11/2026 — plugin v3.50: rimosso il link testuale nell'overlay
 
 Decisione Luca dopo il collaudo v3.49: il link "Torna alla pagina della webcam" non serve, qualsiasi click nell'overlay chiude. Rimosso link e CSS .mwp-back; click su immagine o sfondo chiude, ESC chiude. Deploy: FTP + flush W3TC.
