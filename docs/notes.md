@@ -1,3 +1,14 @@
+## 18/11/2026 (10) — Check dei redirect (plugin Redirection, export CSV di Luca: 86 regole)
+
+- Loop: regola /marmolada/ → https://www.meteo-webcam.it/marmolada/ (si rimanda a se stessa, 10.261 hit): rende irraggiungibili /marmolada/ e chi ci punta (gran-vernel-sulla-marmolada, rifugio-pian-dei-fiacconi-vista-sulla-marmolada). Fix: eliminare la regola (il post /marmolada/ è pubblicato e in sitemap).
+- 48 target in http://www… → un passaggio in più verso https (e i fetch del browser falliscono): meglio target relativi "/slug/".
+- Catene: webcam-selva-gardena → selva-gardena → tubla…; …cima-fertazza → ristoro-belvedere… → monte-civetta…; rifugio-lagazuoi-vista-sud-est → rifugio-lagazuoi-vista-sulle-tofane → cortina-…; /2015/09/16/rifugio-ferraro… → rifugio-ferraro… → home.
+- Doppioni: /2014/06/19/lignano-sabbiadoro/, /2016/05/10/marsico-nuovo/, /2014/10/17/sanremo-portosole/, /val-brembana-vista-dal-paese-di-branzi/.
+- /antartide-scott-base-arrival-heights senza slash finale: la versione con slash risponde 200 (non reindirizzata).
+- 5 pagine reindirizzate alla home (rifugio-ferraro, rifugio-chiggiato, carestiato ×2, roma-vista-panoramica-sud-est): Google le tratta come soft 404 → meglio una webcam vicina o 410. 4 regole apple-touch-icon*.png → home (~40k hit): meglio un'icona vera in root.
+- Regex /201x/(.*)/(.*)/(.*)/ → http://www…/$3 senza slash: meglio "/$3/".
+- Consegnato a Luca redirects-corretti.csv (81 regole: target relativi, catene accorciate, loop e doppioni tolti, slash aggiunto). Home redirect e apple-touch-icon lasciati invariati, da decidere.
+
 ## 18/11/2026 (9) — Check generale Search Console (solo lettura, nessun codice)
 
 - Rendimento: 156K clic e 9,02M impressioni in 16 mesi, posizione media 8,3. Il calo da fine agosto è stagionale: nel 2025 c'è lo stesso andamento (picco estivo, poi calo a settembre, picchi invernali con la neve).
