@@ -3,7 +3,7 @@ Theme Name: Meteo Webcam
 Theme URI: https://www.meteo-webcam.it
 Author: Luca Ciccarelli
 Description: Tema leggero per directory di webcam meteo e blog di viaggio: home a griglia di card 16:9, articolo singolo con immagine in evidenza e webcam live servite dal plugin Meteo Webcam Proxy. Zero JavaScript nel tema, un solo foglio di stile, nessuna richiesta esterna. Compatibile con Google Site Kit / AdSense.
-Version: 2.5
+Version: 2.6
 Requires at least: 6.0
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -76,6 +76,37 @@ a:hover, a:focus { color: var(--accent-dark); text-decoration: underline; }
 
 .site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 18px; flex-wrap: wrap; }
 .site-nav a { color: var(--text-soft); font-size: 0.95rem; font-weight: 500; }
+
+/* ============ Ricerca nell'header (v2.6) ============ */
+.search-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 9px;
+  cursor: pointer;
+  color: var(--text-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.search-toggle svg { display: block; width: 18px; height: 18px; }
+.search-toggle:hover, .search-toggle:focus { color: var(--accent); border-color: var(--accent); }
+
+.search-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(28, 39, 51, 0.10);
+  padding: 18px 0;
+}
+.search-overlay[hidden] { display: none; }
+.search-overlay .search-form { max-width: 560px; margin: 0 auto; }
+.search-overlay .search-form input[type="search"] { font-size: 1.05rem; }
 
 /* ============ Griglia articoli (home/archivi) ============ */
 .page-title {
@@ -191,6 +222,28 @@ a:hover, a:focus { color: var(--accent-dark); text-decoration: underline; }
 /* AdSense (inseriti da Site Kit): centra gli annunci automatici/in-manuali */
 .post-content ins.adsbygoogle { margin: 1.2em 0; }
 
+/* Webcam precedente/successiva + ricerca nel post singolo (v2.6) */
+.post-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 28px 0 0;
+  font-size: 0.95rem;
+}
+.post-nav a {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  max-width: 100%;
+}
+.post-nav a:hover { border-color: var(--accent); text-decoration: none; }
+.post-nav .nav-next { margin-left: auto; text-align: right; }
+.post-search { margin-top: 24px; }
+.post-search .search-form { max-width: 480px; }
+
 /* ============ Navigazione e commenti ============ */
 .pagination { margin: 24px 0; }
 .pagination .nav-links { display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.95rem; }
@@ -272,5 +325,5 @@ a:hover, a:focus { color: var(--accent-dark); text-decoration: underline; }
   body { font-size: 16px; }
   .post-title { font-size: 1.45rem; }
   .site-header-inner { justify-content: center; }
+  .post-nav a { flex: 1 1 auto; }
 }
-

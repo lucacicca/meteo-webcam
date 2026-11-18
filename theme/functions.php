@@ -7,7 +7,8 @@
  *  - W3 Total Cache (page cache, lazy load con Exclude Words: mwp)
  *
  * Filosofia: zero JavaScript nel tema, un solo foglio di stile, nessuna
- * richiesta esterna (font, icone, ecc.). Ogni modifica qui = bump versione MWT_VERSION.
+ * richiesta esterna. Eccezione v2.6: poche righe inline per il toggle della
+ * ricerca nell'header (nessun asset esterno). Ogni modifica qui = bump MWT_VERSION.
  *
  * @package meteo-webcam
  */
@@ -16,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.5' ); // v2.5: pulita post-mwt_focuskw — Luca ha scelto di inserire le frasi chiave Yoast a mano (v2.4/v2.4.1 mai caricate); header style.css allineato a 2.5 (numero versione nella pagina Temi di wp-admin). Storia: v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
+define( 'MWT_VERSION', '2.6' ); // v2.6: webcam precedente/successiva nel post singolo + ricerca nell'header (icona con overlay) e nel post singolo. Storia: v2.5 pulita post-mwt_focuskw; v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
 
 /* ============ Setup ============ */
 
@@ -127,6 +128,48 @@ function mwt_search_form( $form, $args = array() ) {
 	return $form;
 }
 add_filter( 'get_search_form', 'mwt_search_form' );
+
+/**
+ * v2.6: webcam precedente/successiva nel post singolo.
+ *
+ * Link agli adiacenti nell'ordine cronologico, restando nella stessa
+ * categoria (le webcam sono organizzate per categoria regione): stesso
+ * comportamento di get_adjacent_post ma con etichette dedicate.
+ * Sugli articoli senza post adiacenti la nav non compare.
+ */
+function mwt_post_nav() {
+	if ( ! is_singular( 'post' ) ) {
+		return;
+	}
+
+	$prev = get_previous_post( true );
+	$next = get_next_post( true );
+
+	if ( ! $prev && ! $next ) {
+		return;
+	}
+
+	echo '<nav class="post-nav" aria-label="' . esc_attr__( 'Webcam vicine', 'meteo-webcam' ) . '">';
+	if ( $prev ) {
+		echo '<a class="nav-prev" href="' . esc_url( get_permalink( $prev ) ) . '" rel="prev">‹ ' . esc_html__( 'Webcam precedente', 'meteo-webcam' ) . ': ' . esc_html( get_the_title( $prev ) ) . '</a>';
+	}
+	if ( $next ) {
+		echo '<a class="nav-next" href="' . esc_url( get_permalink( $next ) ) . '" rel="next">' . esc_html__( 'Webcam successiva', 'meteo-webcam' ) . ': ' . esc_html( get_the_title( $next ) ) . ' ›</a>';
+	}
+	echo '</nav>';
+}
+
+/**
+ * v2.6: ricerca anche nel post singolo (sotto il contenuto).
+ * La ricerca nell'header copre tutte le pagine; questo form in pagina
+ * è il punto d'arrivo naturale a fine lettura di una webcam.
+ */
+function mwt_post_search() {
+	if ( ! is_singular( 'post' ) ) {
+		return;
+	}
+	echo '<div class="post-search">' . get_search_form( false ) . '</div>';
+}
 
 /**
  * Featured image: WordPress (>= 6.3) gestisce già loading="lazy" e
@@ -352,5 +395,19 @@ add_filter( 'mwp_cron_time_budget', function () { return 55; } );
  *    cache W3TC (l'HTML cachato porta il ?ver= del CSS). Verifiche: ?ver=2.5
  *    sul CSS nel sorgente, pagina Temi con versione 2.5, ?mwt_focuskw=1 NON
  *    risponde più (corretto).
+ * 10) v2.6: webcam precedente/successiva nel post singolo (nav .post-nav con
+ *     get_previous/get_next_post in_same_term=true, quindi resta nella stessa
+ *     categoria) + ricerca:
+ *     (a) header: icona lente .search-toggle apre un overlay .search-overlay
+ *         con il form (markup e ~15 righe di JS inline in index.php, nessun
+ *         asset esterno; chiusura con ESC o click fuori);
+ *     (b) post singolo: form .post-search sotto il contenuto (le pagine webcam
+ *         hanno così la ricerca anche a fine lettura, oltre a quella globale
+ *         nell'header).
+ *     Deploy = FTP di functions.php + style.css + index.php in
+ *     wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifiche:
+ *     ?ver=2.6 sul CSS nel sorgente; icona lente nell'header che apre/chiude
+ *     l'overlay (click, ESC, click fuori); links precedente/successiva in fondo
+ *     a una pagina webcam; form di ricerca sotto lo stesso contenuto; niente
+ *     nav su pagine senza adiacenti.
  */
-

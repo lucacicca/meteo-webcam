@@ -9,6 +9,11 @@
  * plugin Meteo Webcam Proxy dentro the_content(): il tema non fa nulla di
  * speciale, serve solo largo e senza CLS (vedi style.css).
  *
+ * v2.6: ricerca nell'header (icona lente che apre un overlay col form, ~15
+ * righe di JS inline: nessun asset esterno); nel post singolo compaiono la
+ * nav webcam precedente/successiva (mwt_post_nav) e il form di ricerca
+ * (mwt_post_search).
+ *
  * @package meteo-webcam
  */
 
@@ -34,9 +39,22 @@
 				'depth'          => 1,
 			) );
 			?>
+			<button type="button" class="search-toggle" aria-expanded="false" aria-controls="mwt-search-overlay">
+				<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+					<circle cx="11" cy="11" r="7"></circle>
+					<line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+				</svg>
+				<span class="screen-reader-text"><?php esc_html_e( 'Cerca nel sito', 'meteo-webcam' ); ?></span>
+			</button>
 		</nav>
 	</div>
 </header>
+
+<div id="mwt-search-overlay" class="search-overlay" hidden>
+	<div class="wrap">
+		<?php get_search_form(); ?>
+	</div>
+</div>
 
 <main class="wrap site-main">
 
@@ -82,6 +100,9 @@
 					);
 					?>
 				</div>
+
+				<?php mwt_post_nav(); ?>
+				<?php mwt_post_search(); ?>
 			</article>
 
 			<?php
@@ -176,5 +197,20 @@
 </footer>
 
 <?php wp_footer(); ?>
+
+<script>
+(function () {
+	var toggle = document.querySelector('.search-toggle');
+	var overlay = document.getElementById('mwt-search-overlay');
+	if (!toggle || !overlay) { return; }
+	function open() { overlay.hidden = false; toggle.setAttribute('aria-expanded', 'true'); var f = overlay.querySelector('input[type="search"]'); if (f) { f.focus(); } }
+	function close() { overlay.hidden = true; toggle.setAttribute('aria-expanded', 'false'); toggle.focus(); }
+	toggle.addEventListener('click', function () { overlay.hidden ? open() : close(); });
+	document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !overlay.hidden) { close(); } });
+	document.addEventListener('click', function (e) {
+		if (!overlay.hidden && !overlay.contains(e.target) && !toggle.contains(e.target)) { close(); }
+	});
+})();
+</script>
 </body>
 </html>

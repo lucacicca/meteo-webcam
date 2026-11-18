@@ -1,3 +1,13 @@
+## Tema Meteo Webcam — v2.6 (18 novembre 2026) — webcam precedente/successiva + ricerca nell'header (overlay) e nel post singolo
+
+- Tre richieste di Luca sul tema:
+  1. **Link webcam precedente/successiva** nel post singolo: nuova `mwt_post_nav()` richiamata da index.php sotto il contenuto. Usa `get_previous_post(true)` / `get_next_post(true)` (in_same_term=true: resta nella STESSA categoria, cioè la stessa regione) — ordine cronologico di pubblicazione. Etichette "‹ Webcam precedente: {titolo}" / "Webcam successiva: {titolo} ›", CSS `.post-nav` (flex, wrap, su mobile i link si dividono la riga). Sui post senza adiacenti la nav non compare.
+  2. **Ricerca anche nelle pagine delle singole webcam**: nuova `mwt_post_search()` — form di ricerca (stesso `mwt_search_form`) in un `.post-search` sotto il contenuto del post singolo, oltre a quella globale nell'header (punto 3).
+  3. **Ricerca spostata nell'header**: nuovo pulsante icona lente (`.search-toggle`, SVG inline, nessuna icon-font) dentro la nav, che apre un overlay `.search-overlay` a tutta larghezza agganciato in alto (position:fixed, z-index 100) col form di ricerca; focus automatico sull'input all'apertura, chiusura con ESC, click fuori o re-click sull'icona; `aria-expanded`/`aria-controls` aggiornati. Per il toggle ~15 righe di JS inline in fondo a index.php (unica eccezione documentata alla filosofia "zero JS": nessun asset esterno, nessun jQuery). Markup dell'overlay subito dopo l'header, NON dentro l'header sticky (evita clipping/flex dirottati da .site-header-inner).
+- `MWT_VERSION` 2.6 (cache-bust `?ver=2.6` sul CSS). Header di style.css allineato a 2.6.
+- Nessun impatto su plugin MWP, cron, cache immagini, GA4/GTM. Nota page cache W3TC: l'HTML cachato porta il vecchio ?ver= del CSS finché la pagina non si rigenera → dopo il deploy fare flush della page cache.
+- Deploy: FTP di functions.php + style.css + index.php in wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifiche: `?ver=2.6` sul CSS nel sorgente; icona lente nell'header che apre/chiude l'overlay (click, ESC, click fuori); link precedente/successiva in fondo a una pagina webcam (e assenza su post senza adiacenti); form di ricerca in fondo alla pagina webcam.
+
 ## v3.51 (12 novembre 2026) — immagini servite con content-type text/html (MilanoCam)
 
 - Sintomo (Luca, 12/11): le 4 webcam di milanocam.it (Duomo, ParcoVergani, PortaNuova_1, CityLife_1) fallivano il Test dal server pur funzionando nel browser. Diagnosi con HAR del browser: la pagina carica `/_modules/cam_template/display_image.php?image_dir={dir}&image_filename={file}_1920x1080&pid={n}` e la risposta 200 dell'immagine (269 KB) arriva con **content-type "text/html; charset=UTF-8"** (bug del sito, server Aruba) → il plugin scartava la risposta per content-type anche quando conteneva il JPEG valido.
@@ -146,7 +156,7 @@
 ## v3.42 (6 novembre 2026) — webcam_offline via dataLayer/GTM al posto del Measurement Protocol
 
 - **Revisione richiesta da Luca prima del deploy** (la v3.41 non è mai stata caricata in produzione): niente più invio server-side via Measurement Protocol. La rilevazione dell'offline resta server-side (fail marker del cron col conteggio dei fallimenti consecutivi, cap tornato a 20 come in v3.40); l'invio diventa client-side, sotto il controllo del tag manager: quando lo shortcode renderizza una webcam con fallimenti consecutivi ≥ soglia (filtro `mwp_ga_offline_threshold`, default 3, ~7 minuti dal guasto), emette `window.dataLayer.push({event:'webcam_offline', webcam_slug:'…', webcam_name:'…', failure_count:N})` — una volta per pagina per webcam (dedup statica). Nuova funzione `mwp_ga_datalayer_offline($cam)`, richiamata dallo shortcode.
-- **Setup GTM** (a cura di Luca): trigger di evento personalizzato `webcam_offline` → tag evento GA4 con i parametri; registrare `webcam_slug` come dimensione personalizzata evento in GA4 per vedere quale webcam nei report.
+- **Setup GTM** (a cura di Luca): trigger di evento personalizzato `webcam_offline` → tag evento GA4 con i parametri; registrare `webcam_slug` come dimensione personalizzata evento in GA4 per vederlo nei report.
 - **Rimossi** rispetto alla v3.41: sezione admin "Notifiche webcam offline su Google Analytics" (Measurement ID + API secret + pulsante test), handler `admin_post_mwp_save_ga` / `wp_ajax_mwp_ga_test`, helper Measurement Protocol (`mwp_ga_cfg`/`mwp_ga_client_id`/`mwp_ga_track`/`mwp_ga_maybe_alert_offline`), opzioni `mwp_ga_*` (mai usate in produzione), evento `webcam_online` e promemoria giornaliero.
 - **Nota page cache**: l'HTML col push viene servito cachato da W3TC → l'evento continua a sparare a ogni visualizzazione finché la webcam non torna e la pagina viene rigenerata con l'immagine buona.
 - L'immagine di cortesia e il recupero della nota v3.40 introdotti in v3.41 restano invariati.
@@ -162,7 +172,7 @@
 ## Tema Meteo Webcam — functions.php v2.1 (5 novembre 2026) — sitemap Yoast senza stylesheet XSLT (deprecazione XSLT nei browser)
 
 - Sintomo: aprendo /sitemap_index.xml Chrome mostra il banner "This site uses XSLT; that functionality is being removed from this browser very soon". Chrome 158 (17/11/2026) rimuove il supporto XSLT; anche Firefox e WebKit hanno annunciato la stessa intenzione. L'istruzione `<?xml-stylesheet type="text/xsl" ... main-sitemap.xsl?>` emessa da Yoast serve SOLO alla vista formattata della sitemap per gli umani: Google/Bing leggono l'XML grezzo, quindi NESSUN impatto SEO né sulla scansione.
-- Fix: nuovo filtro sul `wpseo_stylesheet_url` in functions.php — l'istruzione xml-stylesheet viene rimossa (XML grezzo, addio banner) finché è di tipo `text/xsl`. Quando Yoast ≥ 28.9 la sostituirà con un foglio di stile CSS (`type="text/css"`), questo passa intatto e la vista leggibile della sitemap torna da sola con l'aggiornamento del plugin.
+- Fix: nuovo filtro sul `wpseo_stylesheet_url` in functions.php — l'istruzione xml-stylesheet viene rimossa (XML grezzo, addio banner) finché è di tipo `text/xsl`. Quando Yoast ≥ 28.9 la sostituirà con un foglio di stile CSS (`type="text/css"`), questo passa intatto e la vista leggibile della sitemap torna da sé con l'aggiornamento del plugin.
 - `MWT_VERSION` bumpata a 2.1 (cache-bust del CSS invariato, nessun cambio visivo).
 - Deploy: caricare via FTP il solo functions.php in wp-content/themes/meteo-webcam/, flush page cache W3TC (le sitemap XML sono page-cached), riaprire /sitemap_index.xml e verificare nel sorgente l'assenza dell'istruzione xml-stylesheet e del banner.
 
@@ -194,7 +204,7 @@
 ## v3.40 (1 novembre 2026) — nota standard sotto la webcam (visibile anche agli agenti AI)
 
 - Lo shortcode `[mwp_webcam]` emette ora una piccola nota sotto l'immagine: "Webcam in tempo reale: l'immagine si aggiorna automaticamente." — testo statico nel DOM, utile al lettore e fondamentale per i crawler/agenti AI (ChatGPT, Gemini, Perplexity), che altrimenti non possono sapere che l'immagine è una livecam e non una foto d'archivio.
-- Nota piccola e neutra (12.5px, grigio), sotto l'immagine e sopra l'eventuale figcaption del credito; zero impatto su CLS perché è testo che segue l'immagine già dimensionata.
+- Nota piccola e neutra (12.5px, grigio), sotto l'immagine e sopra l'eventuale figcaption del credito; zero impatto su CLS perché è testo che segue l'img già dimensionata.
 - Personalizzabile col filtro `mwp_refresh_note` (riceve `$cam`): restituire una stringa vuota per disattivarla.
 - Nessun altro cambiamento: fetch, cron, cache e admin invariati.
 - NOTA v3.41: la nota non era in realtà mai stata emessa dal codice (solo la changelog dell'header era stata aggiornata); recuperata e attivata nella v3.41.
@@ -279,7 +289,7 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 
 ## v3.29 (ottobre 2026) — cache busting
 - Lo shortcode emette le URL con `?v={mtime del file pieno}`.
-- Scoperta: Tophost aggiunge via nginx una `Cache-Control: max-age=31536000` (+expires 1 anno) a TUTTE le immagini per MIME-type (policy globale, non removibile da PHP); il browser onora quella, non la max-age=600 del plugin — webcam ferma 30+ min verificata. Con il version parameter ogni refresh del cron produce URL nuovi e la cache lunga diventa innocua. La doppia Cache-Control resta ma neutralizzata.
+- Scoperta: Tophost aggiunge via nginx una `Cache-Control: max-age=31536000` (+expires 1 anno) a TUTTE le immagini per MIME-type (policy globale, non removibile da PHP); il browser onora quella, non la max-age=600 del plugin — webcam ferma 30+ min verificata. Con il version parameter ogni refresh del cron produce URL nuovi e la cache lunga diventa innocua.
 
 ## v3.28 (ottobre 2026)
 - URL pubblici senza estensione: `/webcam/{slug}`, `/webcam/{slug}/full`, `/webcam/{slug}/{w}`; retrocompatibilità totale con i vecchi `.jpg`/`-full.webp`/`-{w}.webp`.
@@ -341,9 +351,3 @@ Nel cron parallelo, un fetch che non ha MAI completato la richiesta (errno 0 + h
 ## Note trasversali
 - Bug del salvataggio risolto in v3.13–v3.16: aggiungere webcam oltre la 40ª falliva — il campo credito della webcam "ostuni" conteneva ~32 MB di backslash raddoppiati a ogni salvataggio → POST da 50 MB → opzione serializzata oltre il max_allowed_packet di MySQL → update_option rifiutata in silenzio mentre l'admin mostrava comunque "Salvate N webcam".
 - Revisione CWV della v3.21: i problemi erano fetch remoto sincrono in richiesta, varianti rigenerate dal primo visitatore dopo ogni refresh, `<img>` senza dimensioni (CLS), refresh JS inefficace con srcset, placeholder assente nel frontend.
-
-
-
-
-
-
