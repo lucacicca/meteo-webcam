@@ -1,3 +1,9 @@
+## Icone Apple touch (18 novembre 2026) — file statici in root, nessun codice
+
+- iPhone e iPad chiedono `/apple-touch-icon.png`, `-precomposed.png` e le varianti `-120x120`: finora 4 regole Redirection le mandavano alla home (~40.000 hit).
+- Nuove icone in `root/` disegnate in SVG sul favicon "sole e nuvola" (gradiente #1c9bee→#03b7d7, sole #ffd54f, nuvola bianca), quadrato pieno senza trasparenza (iOS arrotonda da solo), soggetto centrato: 180×180 (4.694 byte) e 120×120 (5.438 byte), più le copie `-precomposed`. Sorgente: `root/apple-touch-icon.svg`.
+- Deploy: FTP dei 4 PNG nella root del sito (`/htdocs/`, accanto a favicon.ico), poi eliminare in Redirection le 4 regole `apple-touch-icon*`. Nessun flush necessario. Verifica: le 4 URL rispondono 200 image/png.
+
 ## Tema Meteo Webcam — v2.8 (18 novembre 2026) — lente di ricerca sulla stessa riga del menu
 
 - Segnalazione di Luca (screenshot da telefono + desktop): l'icona di ricerca della v2.6 andava a capo sotto le voci di menu, anche su schermi grandi. Causa: `.site-nav` era un blocco, quindi `<ul>` del menu e pulsante `.search-toggle` stavano uno sotto l'altro.
