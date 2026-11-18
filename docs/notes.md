@@ -1,3 +1,7 @@
+## 18/11/2026 (8) — GSC: video non indicizzati, decisione "non intervenire" (nessun codice)
+
+Report Video di Search Console (dati al 16/11): 70 video rilevati, 19 indicizzati, 51 no, tutti con un solo motivo, "Video isn't on a watch page" (convalida avviata il 2/11, fallita il 5/11). Il video non è il contenuto principale delle pagine webcam (prima l'immagine mwp-webcam, poi l'embed YouTube o il timelapse mp4): è il comportamento previsto da Google. Confronto da visitatore tra 6 pagine indicizzate e 6 no: struttura uguale, VideoObject presente in entrambe, sorgenti miste in entrambi i gruppi → i 19 indicizzati sono casi al limite. Riguarda solo i risultati video: le pagine restano nella ricerca web. Decisione di Luca: non intervenire (niente video sopra l'immagine, niente pagine video dedicate, VideoObject lasciato) e non rilanciare la convalida. Da non riproporre.
+
 ## 18/11/2026 (7) — tema v2.8: lente di ricerca in linea col menu
 
 La lente (v2.6) andava a capo sotto il menu anche su desktop (.site-nav blocco). Ora .site-nav flex; mobile: titolo centrato, lente in alto a destra, menu su una riga (verificato con anteprima a 390 e 360px). Niente hamburger: 3 voci di menu.
