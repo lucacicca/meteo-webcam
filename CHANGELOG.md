@@ -1,3 +1,10 @@
+## MWP Fast Images — mu-plugin v1.2 (18 novembre 2026) — fix HTTP 500 dopo il deploy della 1.1
+
+- Collaudo della 1.1 in produzione: le webcam con variante da rigenerare (0/20 su un campione nuovo, 10/20 su quello già scaldato) rispondevano **HTTP 500** "Call to undefined function mwpf_make_webp()" (mwp-fast-images.php:130, chiamata da riga 48). I numeri di riga corrispondono alla struttura della 1.0 senza le 14 righe aggiunte dalla 1.1: sul server era arrivato un file incompleto. Luca ha rimosso il file per ripristinare il comportamento del plugin.
+- 1.2: chiamata di avvio spostata in FONDO al file, dopo tutte le funzioni, con guardia `function_exists('mwpf_make_webp')`: un file troncato non rompe più le immagini, passa al plugin. L'header `X-MWP-Fast` ora vale la versione (`1.2`) per verificare cosa gira in produzione. Logica invariata rispetto alla 1.1.
+- Nota sicurezza emersa: il 500 mostrava al pubblico il messaggio PHP con il percorso del server (`/home/mhd-01/www.meteo-webcam.it/htdocs/...`): `display_errors` è attivo. Consigliato in wp-config.php `define('WP_DEBUG_DISPLAY', false);` / `@ini_set('display_errors', 0);`.
+- Deploy: FTP di `mwp-fast-images.php` (10.925 byte, md5 b101c19c004d58f39a113ffd5c6f04c2) in `wp-content/mu-plugins/`. Verifica: richieste a webcam poco visitate → 200 con `X-MWP-Fast: 1.2`.
+
 ## MWP Fast Images — mu-plugin v1.1 (18 novembre 2026) — rigenera le varianti senza WordPress
 
 - Collaudo reale della 1.0: su 20 webcam prese a caso (pagina 3 dei post, `/webcam/{slug}/768`) **nessuna** passava dalla corsia veloce (0,5–1,2 s, tutte dal plugin). Causa: dalla v3.31 il cron scrive solo l'originale `{slug}-full.jpg` e le varianti le rigenera "pigramente" la prima richiesta; per una pagina visitata ogni tanto la variante è quasi sempre più vecchia dell'originale, e la 1.0 in quel caso passava al plugin (bootstrap completo + conversione). I test della 1.0 colpivano più volte la stessa webcam (Colla), quindi la variante era già pronta. NB: il README parlava di "warm-up delle varianti dopo ogni fetch", ma dalla v3.31 non è più così.

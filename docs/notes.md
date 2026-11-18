@@ -1,3 +1,7 @@
+## 18/11/2026 (5) — mu-plugin 1.2: fix HTTP 500 della 1.1 (file incompleto sul server)
+
+Dopo il deploy della 1.1 le varianti da rigenerare davano 500 "undefined function mwpf_make_webp()" (righe da 1.0: file arrivato incompleto). 1.2: avvio in fondo al file con guardia function_exists + header X-MWP-Fast = versione. display_errors attivo in produzione (il 500 mostrava il path del server): da spegnere in wp-config.
+
 ## 18/11/2026 (4) — mu-plugin MWP Fast Images v1.1: la corsia veloce ora rigenera le varianti
 
 Scoperto verificando la freschezza delle immagini per la proposta W3TC: su 20 webcam a caso 0 passavano dalla corsia veloce. Il cron (dalla v3.31) scrive solo l'originale, le varianti si rigenerano alla prima richiesta → per le pagine poco visitate la 1.0 cadeva quasi sempre sul plugin. La 1.1 rigenera la variante nel mu-plugin (GD/Imagick, q82, atomico) e la serve subito. Il README va corretto: niente warm-up delle varianti nel cron dalla v3.31.

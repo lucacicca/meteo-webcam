@@ -4,7 +4,7 @@
  * Description: Corsia veloce per le immagini del plugin Meteo Webcam Proxy:
  *              serve le varianti WebP gia' pronte in cache PRIMA che
  *              WordPress carichi i plugin normali e il tema.
- * Version: 1.1
+ * Version: 1.2
  *
  * Va in wp-content/mu-plugins/ (NON in plugins/): i must-use plugin vengono
  * caricati da wp-settings.php prima di tutti i plugin normali, quindi una
@@ -14,6 +14,14 @@
  * via /webcam/colla/768 (bootstrap completo di WordPress) contro ~90 ms
  * come file statico.
  *
+ * Changelog 1.2 (18/11/2026):
+ *   - Dopo il deploy della 1.1 le webcam con variante da rigenerare davano
+ *     HTTP 500 "Call to undefined function mwpf_make_webp()": il file sul
+ *     server era incompleto (numeri di riga della 1.0, senza la funzione).
+ *   - La chiamata di avvio e' ora in fondo al file, dopo tutte le funzioni,
+ *     con una guardia function_exists: un file troncato non rompe piu' le
+ *     immagini (passa al plugin). L'header X-MWP-Fast riporta la versione
+ *     (es. "1.2") per verificare cosa gira in produzione.
  * Changelog 1.1 (18/11/2026):
  *   - Collaudo reale: su 20 webcam prese a caso NESSUNA passava dalla
  *     corsia veloce (0,5-1,2 s). Causa: dalla v3.31 il cron scrive solo
@@ -36,8 +44,8 @@
  *   - Header identici al plugin (Cache-Control con max-age = TTL della
  *     webcam + stale-while-revalidate, Last-Modified = mtime dell'originale,
  *     Vary: Sec-Fetch-Dest su /full), piu' Content-Length, risposta 304 a
- *     If-Modified-Since e X-MWP-Fast: 1 per verificare che la corsia veloce
- *     sia attiva.
+ *     If-Modified-Since e X-MWP-Fast (dalla 1.2 = versione) per verificare che
+ *     la corsia veloce sia attiva.
  *
  * ALLINEAMENTO COL PLUGIN: qui i filtri WordPress non sono ancora
  * disponibili (tema e plugin non caricati), quindi valgono i default del
@@ -58,8 +66,9 @@ const MWPF_SIZES          = [480, 768, 1024, 1600];
 const MWPF_STALE_MAX_AGE  = 86400;
 const MWPF_SWR            = 300;
 const MWPF_QUALITY        = 82;
+const MWPF_VERSION        = '1.2';
 
-mwpf_maybe_serve();
+// v1.2: la chiamata e' in FONDO al file, dopo tutte le funzioni.
 
 function mwpf_maybe_serve() {
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -160,7 +169,7 @@ function mwpf_maybe_serve() {
         header('Vary: Sec-Fetch-Dest');
     }
     header('Last-Modified: ' . $lastModified);
-    header('X-MWP-Fast: 1');
+    header('X-MWP-Fast: ' . MWPF_VERSION);
 
     $ims = $_SERVER['HTTP_IF_MODIFIED_SINCE'] ?? '';
     if ($ims !== '') {
@@ -268,4 +277,11 @@ function mwpf_make_webp($src, $dst, $w) {
         return false;
     }
     return true;
+}
+
+// v1.2: avvio della corsia veloce, in fondo al file: tutte le funzioni sono
+// gia' definite. Se il file arrivasse sul server incompleto, la guardia evita
+// l'errore fatale e la richiesta passa al plugin come se il file non ci fosse.
+if (function_exists('mwpf_make_webp')) {
+    mwpf_maybe_serve();
 }
