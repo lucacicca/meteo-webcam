@@ -1,3 +1,7 @@
+## 18/11/2026 (6) — W3TC: preload e durata della cache pagine (configurazione, nessun codice)
+
+Prima: durata cache pagine 3600 s, preload 5 pagine ogni 900 s (20/h) dalla sitemap_index (1.225 URL, di cui 634 tag) → quasi tutte le pagine webcam fredde (TTFB 0,8–1,2 s contro 80 ms in cache). Applicato da Claude con OK di Luca (Performance > Page Cache, "Plugin configuration successfully updated"): Sitemap URL del preload = https://www.meteo-webcam.it/post-sitemap.xml (539 post), Pages per interval 12, Update interval 900 s (48/h ≈ 576 in 12 h), Maximum lifetime 43200 s (12 h). Invariati: garbage collection 3600 s, purge su modifica post (home, post, feed), /webcam in "Never cache". Freschezza immagini non toccata: l'HTML contiene solo l'URL, il server serve sempre l'ultima immagine e Chrome rispetta il max-age = TTL (verificato). Il preload gira sul WP-Cron (cron-job.org ogni minuto) insieme al cron MWP; il lock di wp-cron evita run sovrapposti. Wp-config: aggiunti WP_DEBUG_DISPLAY false + display_errors 0 (Luca, 15:05).
+
 ## 18/11/2026 (5) — mu-plugin 1.2: fix HTTP 500 della 1.1 (file incompleto sul server)
 
 Dopo il deploy della 1.1 le varianti da rigenerare davano 500 "undefined function mwpf_make_webp()" (righe da 1.0: file arrivato incompleto). 1.2: avvio in fondo al file con guardia function_exists + header X-MWP-Fast = versione. display_errors attivo in produzione (il 500 mostrava il path del server): da spegnere in wp-config.
