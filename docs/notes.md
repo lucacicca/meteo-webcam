@@ -9,6 +9,8 @@
 - Regex /201x/(.*)/(.*)/(.*)/ → http://www…/$3 senza slash: meglio "/$3/".
 - Consegnato a Luca redirects-corretti.csv (81 regole: target relativi, catene accorciate, loop e doppioni tolti, slash aggiunto). Home redirect e apple-touch-icon lasciati invariati, da decidere.
 
+- Esito (16:45): Luca ha corretto a mano loop Marmolada e catene, poi ha importato redirects-import.csv (80 regole, gruppo Redirections). Verifica da visitatore, sequenziale (in parallelo Tophost risponde 503): 79/80 OK, un solo salto verso un target 200; /marmolada/ si apre. Unica eccezione /antartide-scott-base-arrival-heights/: servita dalla page cache W3TC (Disk Enhanced, copia delle 15:22, prima della regola con slash) che salta PHP e quindi Redirection → serve il flush. Lezione: dopo una nuova regola su un URL di un post pubblicato, svuotare la cache di quella pagina.
+
 ## 18/11/2026 (9) — Check generale Search Console (solo lettura, nessun codice)
 
 - Rendimento: 156K clic e 9,02M impressioni in 16 mesi, posizione media 8,3. Il calo da fine agosto è stagionale: nel 2025 c'è lo stesso andamento (picco estivo, poi calo a settembre, picchi invernali con la neve).
