@@ -1,3 +1,9 @@
+## 18/11/2026 (13) — Home redirect, post reindirizzati in sitemap, robots.txt
+
+- Le 5 pagine reindirizzate alla home restano così (decisione di Luca: non ci sono webcam analoghe). Non riproporre.
+- Ricontrollati i post in sitemap dopo l'import: 43 su 539 reindirizzati da Redirection ma ancora pubblicati, elenco in docs/post-reindirizzati-in-sitemap.txt. Da mettere in bozza (dedup di Luca).
+- robots.txt: aggiunta la riga Sitemap: https://www.meteo-webcam.it/sitemap_index.xml (copia in root/robots.txt, 123 byte). Il resto va bene così.
+
 ## 18/11/2026 (12) — Tag: rendimento in Search Console (solo lettura)
 
 16 mesi, filtro URL contenente /tag/: 124 clic (0,08% dei 156K del sito), 26,3K impressioni, CTR 0,5%, posizione 13,1; 176 tag con almeno un'impressione. Top: laguna-del-mort 95 clic (unico post: jesolo-viste-sulla-spiaggia, che cita "laguna del mort" una volta), san-foca 15 (torre-specchia-ruggeri-melendugno), tresche-conca 8 clic su 15.977 impressioni (in concorrenza col post tresche-conca), poi 0-2 clic. 639 tag: 459 con un solo post, 101 con 2, 5 vuoti; tutti index,follow (Yoast). Proposta: tag in noindex e fuori sitemap (Yoast › Impostazioni › Tassonomie › Tag), con l'OK di Luca; unico costo stimato i ~95 clic di laguna-del-mort, recuperabili rafforzando la menzione nel post di Jesolo.
