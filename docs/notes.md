@@ -1,3 +1,7 @@
+## 19/11/2026 — controllo del mattino: preload W3TC (configurazione del 18/11) OK
+
+Controllo automatico delle 9:07 (Chrome di Luca, fetch anonimi senza cache). Pagine: 25 post presi a caso da 5 pagine della REST API, tutti 200: **19/25 già in page cache** (generate da 50 min a 12 h prima, coerente con la durata di 12 h) con risposta mediana **66 ms**; 6/25 generate al momento (zinola-di-savona, reggello, ovindoli-monte-magnola, piz-boe, carloforte, manarola) con mediana **372 ms** (ieri i miss erano 0,8–1,2 s). Prima del preload quasi tutte le pagine webcam erano fuori cache. Home: 200, in cache dalle 00:13. Immagini: 10 webcam a caso (/768), tutte 200 con X-MWP-Fast 1.2, mediana 286 ms, max 434 ms (prima richiesta, variante rigenerata). Nessuna azione necessaria.
+
 ## 18/11/2026 (19) — Tema v2.9 in produzione e collaudato
 
 Luca ha caricato i 3 file alle 19:00. Verifica da visitatore: ?ver=2.9; /category/regione/ "Scegli la regione" 20 card, /category/zona-geografica/ "Scegli la zona" 8 (Alpi Orientali 110 = conteggio con Dolomiti), /category/ambiente/ "Scegli l'ambiente" 9, alpi-orientali → "Sottocategorie" con Dolomiti (48); tutte con miniatura, la prima eager/high; abruzzo, pagina 2 e home senza griglia (prima card eager/high come prima); nessun errore PHP. Nota: sulla parola "webcam" di "Tutte le webcam" AdSense aggiunge un link con icona (classe google-anno, annotazioni di ricerca delle Auto ads): non è del tema, si disattiva dalle impostazioni Auto ads di AdSense.
