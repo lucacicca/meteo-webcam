@@ -412,5 +412,5 @@ AGGIORNAMENTO 9/11 (v3.46, dopo collaudo v3.45 di Luca): pagina full HTML con li
 - MeteoProject: 14 webcam in config; trovate 50 candidate su due server (`stazioni.meteoproject.it/webcam/...` e `www.meteoproject.it/ftp/webcam/...`, non intercambiabili). Attenzione: il Last-Modified di stazioni.* può essere fresco con immagine vecchia (Guardiagrele ferma a gennaio 2026). Troppe richieste ravvicinate a www.meteoproject.it fanno bloccare temporaneamente l'IP del browser.
 - Vedetta: 28 in config, 180 candidate da `/wp-json/wp/v2/posts` (slug `image-client/{slug}` nel contenuto); 126 con file aggiornato, 54 fermi. In config risultano ferme lato Vedetta levanto (~4,5 giorni) e ponza (~42 giorni).
 - Elenchi di lavoro nel Google Sheet "Webcam MeteoProject da aggiungere" (Drive di Luca), fogli MeteoProject / ScenariDigitali / Vedetta con colonne Località, URL immagine, Stato, Già sul sito, Server, Inserita (SI/NO).
-- Tema 2.9.1: margine sotto `.wp-video` (vedi CHANGELOG). Da collaudare dopo il deploy.
+- Tema 2.9.1: margine sotto `.wp-video` (vedi CHANGELOG). In produzione e collaudato da visitatore: HTML con `style.css?ver=2.9.1`, su /pintura-di-bolognola/ 16 px tra ogni video e la webcam (prima 0). Confermato anche da Luca.
 
