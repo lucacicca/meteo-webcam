@@ -1,3 +1,10 @@
+## Tema Meteo Webcam — v2.9.1 (19 novembre 2026) — spazio sotto i video
+
+- Segnalazione di Luca (screenshot di /pintura-di-bolognola/): la webcam del plugin inserita subito dopo un video incorporato restava attaccata al lettore, senza spazio.
+- Causa: il lettore video di WordPress (`div.wp-video`, shortcode [video] o .mp4 incollato) non ha margini e il tema dava il margine solo a paragrafi/liste; `figure.mwp-webcam` ha spazio solo sotto. Misurato da visitatore: video fino a 1474 px, webcam da 1474 px.
+- Fix solo CSS: `.post-content .wp-video, .post-content > video { margin: 0 0 1em; }` (stesso spazio dei paragrafi).
+- `MWT_VERSION` 2.9.1, header di style.css 2.9.1. Deploy: FTP di style.css + functions.php in wp-content/themes/meteo-webcam/ + flush page cache W3TC. Verifiche: `?ver=2.9.1` sul CSS; su /pintura-di-bolognola/ circa 16 px tra ogni video e la webcam che segue.
+
 ## Tema Meteo Webcam — v2.9 (18 novembre 2026) — sottocategorie nelle categorie madri
 
 - Segnalazione di Luca: su /category/regione/, /category/zona-geografica/ e /category/ambiente/ si vedevano solo tutti i post, senza modo di scegliere la regione/zona/ambiente.

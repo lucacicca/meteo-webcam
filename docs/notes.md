@@ -405,3 +405,12 @@ AGGIORNAMENTO 9/11 (v3.46, dopo collaudo v3.45 di Luca): pagina full HTML con li
 - Sottocategorie (pagine rigenerate da W3TC stamattina, quindi già col core 7.1.5): regione 20, zona 8, ambiente 9, alpi-orientali 1 — come il collaudo del 18/11. CF7 solo su /segnalazioni/. Lightbox su sestola ok (overlay col full). global-styles inline presente come prima (widget di ricerca a blocchi, noto).
 - Console da admin: solo "InvalidStateError: Transition was aborted ... ViewTransition opt-in disabled", non presente nell'HTML del visitatore: non viene dal nostro codice.
 - Nota: nella lista plugin risultano attivi anche Classic Editor 1.7.0 e WP Crontrol 2.0.0 (la knowledge li dava assenti/disinstallati).
+
+## 19 novembre 2026 (pomeriggio) — Sorgenti webcam e tema 2.9.1
+
+- Scenari Digitali: sitemap = 44 webcam; 8 attive mancanti aggiunte da Luca via CSV (acquasanta-terme, bolognolaski-castelmanardo2, bolognola-pintura, foligno-ite-scarpellini, spoleto, molini-cammoro, caitorino-museo-montagna, pernazza-group-cantiere-cascia), config a 664; 6 offline non aggiunte. gran-zebru (ghiacciaioforni-gran-zebru) fuori dalla sitemap SD ma funzionante: resta.
+- MeteoProject: 14 webcam in config; trovate 50 candidate su due server (`stazioni.meteoproject.it/webcam/...` e `www.meteoproject.it/ftp/webcam/...`, non intercambiabili). Attenzione: il Last-Modified di stazioni.* può essere fresco con immagine vecchia (Guardiagrele ferma a gennaio 2026). Troppe richieste ravvicinate a www.meteoproject.it fanno bloccare temporaneamente l'IP del browser.
+- Vedetta: 28 in config, 180 candidate da `/wp-json/wp/v2/posts` (slug `image-client/{slug}` nel contenuto); 126 con file aggiornato, 54 fermi. In config risultano ferme lato Vedetta levanto (~4,5 giorni) e ponza (~42 giorni).
+- Elenchi di lavoro nel Google Sheet "Webcam MeteoProject da aggiungere" (Drive di Luca), fogli MeteoProject / ScenariDigitali / Vedetta con colonne Località, URL immagine, Stato, Già sul sito, Server, Inserita (SI/NO).
+- Tema 2.9.1: margine sotto `.wp-video` (vedi CHANGELOG). Da collaudare dopo il deploy.
+
