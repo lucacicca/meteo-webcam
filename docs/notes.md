@@ -395,3 +395,13 @@ AGGIORNAMENTO 9/11 (v3.46, dopo collaudo v3.45 di Luca): pagina full HTML con li
 - ESITO: `display_image.php` restituisce alle richieste esterne il PLACEHOLDER anti-hotlink "High resolution webcam images linking is not allowed. Please link www.milanocam.it" (640×465, ~59 KB): il Test "OK" della v3.51 scaricava quello. Il gestore vieta esplicitamente l'hotlink; weserv e il server Tophost vengono comunque bloccati/serviti con l'errore.
 - DECISIONE (Luca + Vibe): non aggirare la policy. Eliminare le 4 webcam dalla config e trasformare gli shortcode in link; aggiungere MilanoCam.it alla pagina /siti-di-webcam-meteo/. La v3.51 resta in repo come fix generico (server che dichiarano text/html per immagini vere).
 - Slug: ricordo che le rotte /webcam/{slug} accettano solo [a-z0-9-] (niente underscore).
+
+## 19 novembre 2026 — Controllo compatibilità WordPress 7.1.5 (solo verifica, nessun codice)
+
+- Luca ha aggiornato il core a WordPress 7.1.5 il 18/11 (footer admin: "Versione 7.1.5").
+- Analisi statica: plugin v3.52, mu-plugin 1.2 e tema v2.9 usano solo API stabili del core (init, cron_schedules, shortcode, admin_menu/admin_post/wp_ajax, wp_get_image_editor, add_image_size, wp_get_attachment_image, transient). Nessun jQuery/jQuery UI (JS admin in vanilla fetch), nessuna list table, nessun codice nell'editor a blocchi: le novità 7.1 (editor sempre in iframe, jQuery UI 1.14.2, toolbar persistente, markup list table, media lato client) non li toccano.
+- Collaudo dal vivo: pagina Webcam in admin senza notice PHP; Test OK su bordighera2 (162 ms), bordighera3 (193 ms), marinevillage1 (562 ms); mwp-status healthy (total 656, fresh 631, stale 20, backoff 14, missing 5).
+- Da visitatore: home, ricerca, sitemap_index, 8 post a caso (bettmeralp, vietri-sul-mare, pragelato, sestola, isole-borromee, passo-della-colla-di-casaglia, rifugio-quintino-sella, ortisei) tutti 200, tema ?ver=2.9, nessun errore PHP nell'HTML. 10 immagini /webcam/ tutte 200 image/webp con X-MWP-Fast 1.2 (157–255 ms); /webcam/colla/full come <img> → WebP.
+- Sottocategorie (pagine rigenerate da W3TC stamattina, quindi già col core 7.1.5): regione 20, zona 8, ambiente 9, alpi-orientali 1 — come il collaudo del 18/11. CF7 solo su /segnalazioni/. Lightbox su sestola ok (overlay col full). global-styles inline presente come prima (widget di ricerca a blocchi, noto).
+- Console da admin: solo "InvalidStateError: Transition was aborted ... ViewTransition opt-in disabled", non presente nell'HTML del visitatore: non viene dal nostro codice.
+- Nota: nella lista plugin risultano attivi anche Classic Editor 1.7.0 e WP Crontrol 2.0.0 (la knowledge li dava assenti/disinstallati).
