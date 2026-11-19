@@ -414,3 +414,12 @@ AGGIORNAMENTO 9/11 (v3.46, dopo collaudo v3.45 di Luca): pagina full HTML con li
 - Gli elenchi di lavoro delle candidate (MeteoProject, Scenari Digitali, Vedetta) li tiene Luca fuori dal repo.
 - Tema 2.9.1: margine sotto `.wp-video` (vedi CHANGELOG). In produzione e collaudato da visitatore: HTML con `style.css?ver=2.9.1`, su /pintura-di-bolognola/ 16 px tra ogni video e la webcam (prima 0). Confermato anche da Luca.
 
+## 19 novembre 2026 (sera) — Ricerche Google Trends e nuove sorgenti
+
+- Google Trends: la "Explore" classica (`trends.google.it/trends/explore?...&q=webcam`) si legge dal Chrome di Luca (prima l'accesso automatico era bloccato); Google avvisa che verrà dismessa a favore della nuova Explore. Per le liste complete Luca esporta i CSV "top" e "rising" dalla nuova Explore.
+- "webcam", Italia, ultimi 30 giorni: picco a 100 il 19/11 (prima 16–57). Regioni in testa: Valle d'Aosta, Trentino-Alto Adige, Molise, Liguria, Veneto. Le ricerche in crescita sono quasi tutte località sciistiche.
+- Confronto con le 496 pagine del sito (REST API da visitatore): coperte quasi tutte le località cercate. Mancanti: Roma (c'è solo Cervara di Roma), Torino, Verona, Pila, Verena, Campocatino, Campo Felice, Arabba, Paganella, Campigna, Obereggen, Sella Nevea, Passo San Pellegrino. Coperte in parte: Milano (solo Expo 2015 e Pirellone), Alta Badia (Colfosco), Selva di Val Gardena (Tubla), Livigno centro, Grostè (Monte Spinale), Via Lattea (Sestriere).
+- Sorgenti trovate per le scoperte, quasi tutte via **Windy**: immagine `https://imgproxy.windy.com/_/full/plain/current/{id}/original.jpg` (1920×1080 nella maggior parte dei casi), pagina `https://www.windy.com/webcams/{id}`. Windy ricampiona Panomax e feratel: l'immagine può essere qualche minuto indietro. L'età si legge nella pagina Windy ("HH:MM · N min. fa"); diverse camere Windy sono ferme da mesi (Portavescovo 371 giorni, Col Margherita 66, Verona Monte Baldo 191) e vanno scartate.
+- Verena: immagine originale `https://www.asiago.it/images/webcam/viewverena.jpg` (1920×1080, ogni 5 min). Verona: trovata solo SkylineWebcams (Arena), ultima spiaggia.
+- **Prima webcam via Windy in config**: Duomo di Milano (Windy 1170927034), inserita da Luca, Test ok 1920×1080, 277 KB, 123 ms. Da verificare chi gestisce la camera (escludere se è MilanoCam, che vieta l'hotlink).
+
