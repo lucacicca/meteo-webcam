@@ -1,5 +1,24 @@
 # meteo-webcam
 
+## In English
+
+Source code and documentation for [meteo-webcam.it](https://www.meteo-webcam.it), an Italian directory of 600+ live weather webcams, running on WordPress on shared hosting. I designed and run the project; development is AI-assisted with Claude Code, while architecture, priorities and decisions are mine.
+
+**What it does:** a custom WordPress plugin fetches webcam snapshots from third-party sources, caches them and serves them locally (blocking hotlinking), with a lightweight custom theme on top.
+
+**Web performance**
+- Every served image is WebP, with responsive variants and cache busting based on file modification time
+- A must-use plugin serves cached images before WordPress, plugins and theme are loaded
+- Theme with no JavaScript, a single template, eager featured image with `fetchpriority`
+- Webcam refresh runs on an external cron with parallel fetches, a time budget per run and progressive backoff on failing sources, so user requests never wait for a remote fetch
+
+**Tracking and monitoring**
+- GA4 via Google Tag Manager, with a custom dataLayer (webcam slugs and names per page) built through the GTM4WP filter
+- `webcam_offline` event pushed to the dataLayer when a source fails repeatedly
+- JSON health endpoint (fresh / stale / backoff / missing) checked by an external monitor
+
+The rest of the documentation, the changelog and the notes in `docs/` are in Italian.
+
 Codice e documentazione per **meteo-webcam.it** — directory di webcam meteo.
 
 ## Componenti
