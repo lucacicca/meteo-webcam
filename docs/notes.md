@@ -430,5 +430,5 @@ AGGIORNAMENTO 9/11 (v3.46, dopo collaudo v3.45 di Luca): pagina full HTML con li
 - Video solo per una parte delle webcam: /monte-castel-manardo/ (manca bolognolaski-castelmanardo2), /pintura-di-bolognola/ (manca bolognola-pintura).
 - /rifugio-barba-ferrero-sul-monte-rosa/ usa ancora il vecchio `tl.scenaridigitali.com/monterosa4/video/timelapse.mp4`, che dal browser non risponde; il nuovo `api.scenaridigitali.com/media/monterosa-rifugio-barba-ferrero/timelapse.mp4` funziona. È l'unica pagina col vecchio dominio.
 - Webcam SD in config senza pagina pubblicata: molini-di-sellano-e-cammoro, torino-museo-della-montagna. Le altre righe SD senza pagina sono doppioni di webcam già pubblicate (agudo, margherita, pretare).
-- Tema 2.9.2: video del lettore WordPress a tutta larghezza (vedi CHANGELOG).
+- Tema 2.9.2: video del lettore WordPress a tutta larghezza (vedi CHANGELOG). Caricato da Luca e confermato il 20/11: il video ora ha la stessa larghezza della webcam.
 
