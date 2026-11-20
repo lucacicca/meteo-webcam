@@ -1,3 +1,10 @@
+## Tema Meteo Webcam — v2.9.3 (20 novembre 2026) — VideoObject anche per i video in [embed]
+
+- Le pagine con video inserito come `[embed]https://…/video.mp4[/embed]` non avevano il VideoObject JSON-LD: la regex di `mwt_video_file_urls` accettava dopo l'estensione solo spazio, virgolette, `<`, `>`, `?` o fine testo, non la `[` di `[/embed]`. Panomax (`<source src>`) e YouTube erano coperti.
+- Fix: `[` e `]` esclusi dall'URL e ammessi dopo l'estensione. Richiesta di Luca: per tutti gli [embed], non solo Scenari Digitali.
+- Effetto misurato sui 499 post pubblicati (contenuto grezzo): VideoObject da 7 a 43 pagine, da 13 a 57 video. Nessun video già coperto perso; tutte le 43 pagine hanno la featured (obbligatoria per lo schema dei file). Gli [embed] sono 46 in 38 pagine, tutti file video: Scenari Digitali 37, Panomax 2, pwad 2, feratel 2, Ramsat, Livata, Oltreleali.
+- `MWT_VERSION` 2.9.3, header di style.css 2.9.3 (nessuna modifica CSS). Deploy: FTP di functions.php + style.css in wp-content/themes/meteo-webcam/ + flush page cache W3TC.
+
 ## Tema Meteo Webcam — v2.9.2 (20 novembre 2026) — video a tutta larghezza
 
 - Segnalazione di Luca (screenshot di /auronzo-di-cadore-dal-monte-agudo/): su desktop il video timelapse era più stretto della webcam.
