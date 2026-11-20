@@ -1,3 +1,10 @@
+## Tema Meteo Webcam — v2.9.2 (20 novembre 2026) — video a tutta larghezza
+
+- Segnalazione di Luca (screenshot di /auronzo-di-cadore-dal-monte-agudo/): su desktop il video timelapse era più stretto della webcam.
+- Causa: lo shortcode [video] senza width usa i 640×360 di default di WordPress, che scrive `style="width: 640px"` sul `div.wp-video`; la colonna è 740 px e la webcam la riempie. Misurato da visitatore (finestra 1536 px): webcam 740 px, video 640 px.
+- Fix solo CSS: `.post-content .wp-video { width: 100% !important; }`. MediaElement ha stretching "responsive" e ricalcola l'altezza dalla proporzione del video. Prova nel browser con il CSS iniettato: player 740×416, come la webcam.
+- `MWT_VERSION` 2.9.2, header di style.css 2.9.2. Deploy: FTP di style.css + functions.php in wp-content/themes/meteo-webcam/ + flush page cache W3TC.
+
 ## Tema Meteo Webcam — v2.9.1 (19 novembre 2026) — spazio sotto i video
 
 - Segnalazione di Luca (screenshot di /pintura-di-bolognola/): la webcam del plugin inserita subito dopo un video incorporato restava attaccata al lettore, senza spazio.

@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MWT_VERSION', '2.9.1' ); // v2.9.1: spazio sotto i video del lettore WordPress (.wp-video), la webcam che segue non resta attaccata. v2.9: sottocategorie (card con miniatura e conteggio) in testa alle categorie che ne hanno. v2.8: lente di ricerca sulla stessa riga del menu (desktop) e in alto a destra (mobile). v2.7.1: miniature Related Posts (CRP) lazy. v2.7: loading/fetchpriority solo sulla featured del post singolo + prima card eager in home; asset Contact Form 7 solo dove c'e' un modulo (/segnalazioni/). v2.6: webcam precedente/successiva nel post singolo + ricerca nell'header (icona con overlay) e nel post singolo. Storia: v2.5 pulita post-mwt_focuskw; v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
+define( 'MWT_VERSION', '2.9.2' ); // v2.9.2: lettore video WordPress a tutta larghezza della colonna (prima 640px fissi). v2.9.1: spazio sotto i video del lettore WordPress (.wp-video), la webcam che segue non resta attaccata. v2.9: sottocategorie (card con miniatura e conteggio) in testa alle categorie che ne hanno. v2.8: lente di ricerca sulla stessa riga del menu (desktop) e in alto a destra (mobile). v2.7.1: miniature Related Posts (CRP) lazy. v2.7: loading/fetchpriority solo sulla featured del post singolo + prima card eager in home; asset Contact Form 7 solo dove c'e' un modulo (/segnalazioni/). v2.6: webcam precedente/successiva nel post singolo + ricerca nell'header (icona con overlay) e nel post singolo. Storia: v2.5 pulita post-mwt_focuskw; v2.3 pulita post-rollout link; v2.1 fix XSLT sitemap
 
 /* ============ Setup ============ */
 

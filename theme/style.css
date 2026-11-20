@@ -3,7 +3,7 @@ Theme Name: Meteo Webcam
 Theme URI: https://www.meteo-webcam.it
 Author: Luca Ciccarelli
 Description: Tema leggero per directory di webcam meteo e blog di viaggio: home a griglia di card 16:9, articolo singolo con immagine in evidenza e webcam live servite dal plugin Meteo Webcam Proxy. Zero JavaScript nel tema, un solo foglio di stile, nessuna richiesta esterna. Compatibile con Google Site Kit / AdSense.
-Version: 2.9.1
+Version: 2.9.2
 Requires at least: 6.0
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
@@ -254,6 +254,14 @@ a:hover, a:focus { color: var(--accent-dark); text-decoration: underline; }
 .post-content .wp-video,
 .post-content > video {
   margin: 0 0 1em;
+}
+
+/* Il lettore WordPress senza width nello shortcode usa i 640x360 di default e
+   scrive "width: 640px" inline sul div.wp-video: lo portiamo a tutta colonna
+   come le webcam. MediaElement (stretching "responsive") ricalcola l'altezza
+   dalla proporzione width/height del video (v2.9.2) */
+.post-content .wp-video {
+  width: 100% !important;
 }
 
 /* AdSense (inseriti da Site Kit): centra gli annunci automatici/in-manuali */

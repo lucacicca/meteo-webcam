@@ -423,3 +423,12 @@ AGGIORNAMENTO 9/11 (v3.46, dopo collaudo v3.45 di Luca): pagina full HTML con li
 - Verena: immagine originale `https://www.asiago.it/images/webcam/viewverena.jpg` (1920×1080, ogni 5 min). Verona: trovata solo SkylineWebcams (Arena), ultima spiaggia.
 - **Prima webcam via Windy in config**: Duomo di Milano (Windy 1170927034), inserita da Luca, Test ok 1920×1080, 277 KB, 123 ms. Da verificare chi gestisce la camera (escludere se è MilanoCam, che vieta l'hotlink).
 
+## 20 novembre 2026 — Video Scenari Digitali nelle pagine e tema 2.9.2
+
+- Controllo (solo lettura) delle pagine con webcam Scenari Digitali: config esportata dall'admin (41 righe SD), contenuti da `/wp-json/wp/v2/posts` da visitatore (497 post). 29 pagine pubblicate con webcam SD, 22 avevano già il timelapse `https://api.scenaridigitali.com/media/{slug}/timelapse.mp4`.
+- Senza video: /foligno/, /monte-subasio/, /frontignano-di-ussita/ (2 webcam), /auronzo-di-cadore-dal-monte-agudo/. Luca ha inserito i video il 20/11.
+- Video solo per una parte delle webcam: /monte-castel-manardo/ (manca bolognolaski-castelmanardo2), /pintura-di-bolognola/ (manca bolognola-pintura).
+- /rifugio-barba-ferrero-sul-monte-rosa/ usa ancora il vecchio `tl.scenaridigitali.com/monterosa4/video/timelapse.mp4`, che dal browser non risponde; il nuovo `api.scenaridigitali.com/media/monterosa-rifugio-barba-ferrero/timelapse.mp4` funziona. È l'unica pagina col vecchio dominio.
+- Webcam SD in config senza pagina pubblicata: molini-di-sellano-e-cammoro, torino-museo-della-montagna. Le altre righe SD senza pagina sono doppioni di webcam già pubblicate (agudo, margherita, pretare).
+- Tema 2.9.2: video del lettore WordPress a tutta larghezza (vedi CHANGELOG).
+
