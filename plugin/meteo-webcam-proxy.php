@@ -4,7 +4,20 @@
  * Description: Proxya su meteo-webcam.it le webcam che bloccano l'hotlinking.
  *              Varianti responsive in WebP, click per aprire l'immagine a dimensione piena.
  *              Webcam gestite da una pagina di amministrazione in wp-admin.
- * Version: 3.52
+ * Version: 3.53
+ * Changelog 3.53 (segnaposto __ts__ nell'URL sorgente):
+ *   - Prato Nevoso (vigliettisport.com/webcam.jpg): la sorgente serve il file
+ *     con Cache-Control max-age=2678400 (31 giorni) e il sito del gestore lo
+ *     carica sempre con ?time=<ms>. Il plugin chiedeva l'URL nudo e riceveva
+ *     una copia vecchia (stampa del 19/11 il 26/11) pur riscrivendo il file
+ *     ogni 10 minuti.
+ *   - Nuovo helper mwp_expand_url(): nell'URL della webcam il testo __ts__
+ *     viene sostituito a ogni download con il timestamp corrente (secondi).
+ *     Es. https://www.vigliettisport.com/webcam.jpg?time=__ts__
+ *     Applicato al fetch singolo (mwp_fetch, pulsante Test) e al fetch
+ *     parallelo del cron (via mwp_split_auth). Opt-in: le webcam senza
+ *     __ts__ nell'URL non cambiano. (Le graffe tipo {ts} non si possono
+ *     usare: esc_url_raw le toglie al salvataggio.)
  * Changelog 3.52 (lightbox: variante adatta allo schermo invece del full):
  *   - Audit velocita' 18/11: il lightbox scaricava sempre il full WebP
  *     (Colla: ~750 KB) anche su telefoni e schermi dove 1600 o 1024 bastano.
@@ -642,9 +655,20 @@ add_filter('gtm4wp_compile_datalayer', function ($datalayer) {
 });
 
 /**
+ * v3.53: segnaposto anti-cache nell'URL sorgente. "__ts__" diventa il
+ * timestamp corrente, per le sorgenti che servono il file con una cache
+ * lunga e si aggiornano solo con un parametro che cambia (es. Viglietti).
+ */
+function mwp_expand_url($url) {
+    $url = (string) $url;
+    return strpos($url, '__ts__') === false ? $url : str_replace('__ts__', (string) time(), $url);
+}
+
+/**
  * Scarica l'immagine remota aggirando i blocchi anti-hotlink più comuni.
  */
 function mwp_fetch($url, $refererMode = '') {
+    $url = mwp_expand_url($url); // v3.53
     $host = parse_url($url, PHP_URL_HOST);
     if (!$host || !filter_var($url, FILTER_VALIDATE_URL)
         || !in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'])) {
@@ -768,6 +792,7 @@ function mwp_body_is_image($data) {
  * CURLOPT_USERPWD + CURLAUTH_ANY libcurl negozia il metodo giusto.
  */
 function mwp_split_auth($url) {
+    $url = mwp_expand_url($url); // v3.53
     if (!preg_match('#^(https?://)([^@/:]+):([^@/]+)@#i', (string) $url, $m)) {
         return [$url, ''];
     }

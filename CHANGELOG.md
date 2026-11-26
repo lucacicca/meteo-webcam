@@ -1,3 +1,10 @@
+## v3.53 (26 novembre 2026) — segnaposto __ts__ nell'URL sorgente
+
+- Segnalazione di Luca: /prato-nevoso/ non si aggiornava. Controllo da visitatore: il nostro full (3840×2160) riportava la stampa "giovedì 19 novembre 2026, 07:04" mentre la sorgente con `?time=` era del 26/11 alle 11:09. Il nostro file veniva comunque riscritto ogni 10 minuti (Last-Modified fresco): il contenuto scaricato era vecchio.
+- Causa: `https://www.vigliettisport.com/webcam.jpg` è servito con `Cache-Control: max-age=2678400` (31 giorni) e la pagina del gestore lo carica sempre con `?time=<ms>`. Chiedendo l'URL nudo il plugin riceveva una copia in cache.
+- Fix opt-in: nell'URL della webcam `__ts__` viene sostituito a ogni download con il timestamp corrente (`mwp_expand_url()`, chiamata in `mwp_fetch` e in `mwp_split_auth`, quindi anche nel fetch parallelo del cron). Le webcam senza `__ts__` non cambiano. Le graffe (`{ts}`) non si possono usare perché `esc_url_raw` le toglie.
+- Dopo il deploy: in admin, URL di prato-nevoso → `https://www.vigliettisport.com/webcam.jpg?time=__ts__`, salvare e premere Test.
+
 ## Tema Meteo Webcam — v2.9.3 (20 novembre 2026) — VideoObject anche per i video in [embed]
 
 - Le pagine con video inserito come `[embed]https://…/video.mp4[/embed]` non avevano il VideoObject JSON-LD: la regex di `mwt_video_file_urls` accettava dopo l'estensione solo spazio, virgolette, `<`, `>`, `?` o fine testo, non la `[` di `[/embed]`. Panomax (`<source src>`) e YouTube erano coperti.

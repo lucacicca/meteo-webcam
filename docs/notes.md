@@ -1,3 +1,9 @@
+## 26/11/2026 — Prato Nevoso ferma al 19/11: plugin v3.53 (segnaposto __ts__)
+
+Segnalazione di Luca. Controllo da visitatore alle 12:13: /webcam/prato-nevoso/full 200, X-MWP-Fast 1.2, Last-Modified di 3 minuti prima, ma l'immagine (3840×2160) porta la stampa "giovedì 19 novembre 2026, 07:04". La sorgente `https://www.vigliettisport.com/webcam.jpg` è servita con max-age 31 giorni; la pagina di Viglietti la carica con `?time=<ms>` e così è del 26/11 11:09. Config in admin corretta (URL nudo, referer pagina Viglietti, TTL 600). Il pulsante Test non basta qui: dice solo byte e dimensioni, non l'età della foto.
+Fix: plugin v3.53, `__ts__` nell'URL diventa il timestamp a ogni download (opt-in). Push non fatto in questa sessione (non autorizzato): file consegnato a Luca. Dopo il deploy: URL → `https://www.vigliettisport.com/webcam.jpg?time=__ts__`, salvare, attendere un giro di cron e controllare la stampa nell'immagine (non il Last-Modified).
+Regola generale: per le webcam "ferme" guardare data e ora stampate nell'immagine; il nostro Last-Modified dice solo che il file è stato riscritto.
+
 ## 19/11/2026 — controllo del mattino: preload W3TC (configurazione del 18/11) OK
 
 Controllo automatico delle 9:07 (Chrome di Luca, fetch anonimi senza cache). Pagine: 25 post presi a caso da 5 pagine della REST API, tutti 200: **19/25 già in page cache** (generate da 50 min a 12 h prima, coerente con la durata di 12 h) con risposta mediana **66 ms**; 6/25 generate al momento (zinola-di-savona, reggello, ovindoli-monte-magnola, piz-boe, carloforte, manarola) con mediana **372 ms** (ieri i miss erano 0,8–1,2 s). Prima del preload quasi tutte le pagine webcam erano fuori cache. Home: 200, in cache dalle 00:13. Immagini: 10 webcam a caso (/768), tutte 200 con X-MWP-Fast 1.2, mediana 286 ms, max 434 ms (prima richiesta, variante rigenerata). Nessuna azione necessaria.
