@@ -1,3 +1,28 @@
+## 27/11/2026 — Core update di dicembre, titoli e meta description Yoast (nessun codice)
+
+Core update di dicembre 2026: preannunciato da Google il 24/11 (prima volta in anticipo, per le regole CMA sul ranking equo), partirà a dicembre senza data. Riguarda query lunghe/complesse e risultati personalizzati, nessun requisito tecnico nuovo. Controllo del repo: tema 2.9.3, plugin 3.53 e mu-plugin 1.2 non toccano mai post_modified / dateModified; l'unica data nei dati strutturati è uploadDate del VideoObject (= data del post). Nessuna modifica a tema e plugin. robots.txt invariato: il token `__usage_ai-training` sarà supportato da Google nel 2027 e non conta per il ranking.
+- Post con ID vecchio e data 6/11 o 12/11 (villar-perosa, madonna-di-campiglio-vista-sul-paese, novellara, marine-village-litorale-romano): erano bozze pubblicate a novembre, data corretta.
+- Da valutare da Luca (pannelli): "Nome pubblico" dell'autore (ora "webcamadmin" in JSON-LD e meta author) e Organization in Yoast.
+- Il repo risulta pubblico (clonabile senza credenziali): segnalato a Luca. Nessun segreto nei file.
+
+Search Console, 16 mesi (155K clic, 9,09M impressioni), query che contengono: "webcam" 111K clic; "meteo" 3,68K (CTR 0,6%, pos. 12, di cui 980 il brand "meteowebcam"); "live" 1,76K (gonfiato da livigno/livata); "diretta" 1,55K (CTR 2,3%, pos. 6,8); "neve" 763 su 299K impressioni (CTR 0,3%); "tempo reale" 543; anno 0.
+
+Yoast (modifiche di Luca, verificate da visitatore con cache rigenerata):
+- Titolo SEO articoli: da `Webcam %%title%%: Meteo Live e Tempo Reale 2026` (289/482 oltre 60 caratteri) a **`Webcam %%title%% in diretta`**. I 40 titoli ancora lunghi sono stati riscritti a mano nel singolo post; Monte Capanne riportato allo schema. Esito: 482 post, nessun titolo oltre 60 caratteri (massimo 60, Groenlandia).
+- Meta description articoli: da `🔴 Guarda la Webcam di %%title%% in diretta. Situazione meteo, neve e immagini aggiornate in tempo reale per %%title%%. Controlla ora.` (mediana 168, max 236, "neve" anche al mare) a **`🔴 Webcam di %%title%% in diretta, aggiornata ogni pochi minuti. Guarda adesso che tempo fa`** (max 141). Tutti i 482 post la usano (svuotate le description personalizzate di abbadia-lariana e san-vincenzo). `%%primary_category%%` scartato: i post hanno più categorie.
+- Titoli dei post corretti: santa-cristina "sullla" → "sulla" (slug invariato), porto-santo-stefano "tragetti" → "traghetti", arbatax senza "meteo", "Sella Nevea", doppi spazi tolti (rifugio-zamboni-zappa, calitri, la-verna, lago-dorta-vista-da-omegna, groenlandia-summit-station, monte-zoncolan).
+- Idea aperta: description personalizzate con "neve" per le località sciistiche.
+- Da controllare: CTR in GSC sui titoli nuovi tra 3-4 settimane; dopo il rollout dell'update, confronto con dicembre 2025 (stagionalità neve).
+
+## 26/11/2026 — Search Console, report Pagine (dati del 23/11)
+
+- Totali: 605 indicizzate, 821 non indicizzate. "Discovered - not indexed" da 560 (18/11) a 34, effetto tag noindex + post reindirizzati tolti dalla sitemap.
+- Crawled - currently not indexed: 626 (convalida "Failed", non rilanciare). ~70% immagini `/webcam/{slug}/full`, poi tag, feed, paginazioni, wp-emoji.js con ?ver: normale. Post veri (7): abbadia-lariana, islanda-isola-di-vestmannaeyjar, villar-perosa, alassio-marina, fanano, novellara, chamois-colle-fontana-fredda. Canonical/robots ok, ~600-800 parole: scelta di Google.
+- Fix di Luca: Redirection → Options → Default query matching = "Ignore all query parameters" (prima Exact): le URL reindirizzate con parametri (`?utm_source=rss…`, `?_gl=`) davano 404. Verificato da visitatore anche sulle regole esistenti.
+- Fix di Luca: link Wikipedia senza `https://` in /punta-marina-terme-di-ravenna/ (generava un 404 interno). Verificato da visitatore.
+- Soft 404 (1): `/webcam/tirrenia-bagno-maddalena/full` (segnaposto SVG con 200; webcam già "da sistemare").
+- 404 legittimi, nessuna azione: belgirate1/2 e torbole1 `/full`, `/*` e `/wp-content/*` (precaricamento WordPress), /wpautoterms/terms-and-conditions/, polyfills.js di twentytwentyone, paginazioni oltre la fine. Previsti: noindex 52, canonical alternativo 24, duplicato senza canonical 1, bloccata da robots 1, redirect 59.
+
 ## 26/11/2026 — Prato Nevoso ferma al 19/11: plugin v3.53 (segnaposto __ts__)
 
 Segnalazione di Luca. Controllo da visitatore alle 12:13: /webcam/prato-nevoso/full 200, X-MWP-Fast 1.2, Last-Modified di 3 minuti prima, ma l'immagine (3840×2160) porta la stampa "giovedì 19 novembre 2026, 07:04". La sorgente `https://www.vigliettisport.com/webcam.jpg` è servita con max-age 31 giorni; la pagina di Viglietti la carica con `?time=<ms>` e così è del 26/11 11:09. Config in admin corretta (URL nudo, referer pagina Viglietti, TTL 600). Il pulsante Test non basta qui: dice solo byte e dimensioni, non l'età della foto.
