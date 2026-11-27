@@ -2,7 +2,7 @@
 
 Core update di dicembre 2026: preannunciato da Google il 24/11 (prima volta in anticipo, per le regole CMA sul ranking equo), partirà a dicembre senza data. Riguarda query lunghe/complesse e risultati personalizzati, nessun requisito tecnico nuovo. Controllo del repo: tema 2.9.3, plugin 3.53 e mu-plugin 1.2 non toccano mai post_modified / dateModified; l'unica data nei dati strutturati è uploadDate del VideoObject (= data del post). Nessuna modifica a tema e plugin. robots.txt invariato: il token `__usage_ai-training` sarà supportato da Google nel 2027 e non conta per il ranking.
 - Post con ID vecchio e data 6/11 o 12/11 (villar-perosa, madonna-di-campiglio-vista-sul-paese, novellara, marine-village-litorale-romano): erano bozze pubblicate a novembre, data corretta.
-- Da valutare da Luca (pannelli): "Nome pubblico" dell'autore (ora "webcamadmin" in JSON-LD e meta author) e Organization in Yoast.
+- Da valutare da Luca (pannelli): "Nome pubblico" dell'autore (ora il nome utente WordPress in JSON-LD e meta author) e Organization in Yoast.
 - Il repo risulta pubblico (clonabile senza credenziali): segnalato a Luca. Nessun segreto nei file.
 
 Search Console, 16 mesi (155K clic, 9,09M impressioni), query che contengono: "webcam" 111K clic; "meteo" 3,68K (CTR 0,6%, pos. 12, di cui 980 il brand "meteowebcam"); "live" 1,76K (gonfiato da livigno/livata); "diretta" 1,55K (CTR 2,3%, pos. 6,8); "neve" 763 su 299K impressioni (CTR 0,3%); "tempo reale" 543; anno 0.
